@@ -40,7 +40,7 @@
 /*************************************************************************************************************************
  *                                                       TYPEDEFS                                                        *
  *************************************************************************************************************************/
-#define DEVICE_TYPE     LIGHT_DRIVER
+#define DEVICE_TYPE     LOW_CONTROL
      
 typedef enum
 {
@@ -333,6 +333,10 @@ static void networkRun( void )
         {
             leaveNetwork();
         }
+        //if( sendPacket.m_count >= 30)
+        //{
+        //    configASSERT( 0 );
+        //}
         //nwkAttributeSave();
         //taskYIELD();
         vTaskDelay(1);

@@ -2,7 +2,7 @@
 FREERTOS.FootprintOK=true
 FREERTOS.IPParameters=Tasks01,FootprintOK,configTOTAL_HEAP_SIZE
 FREERTOS.Tasks01=defaultTask,0,128,StartDefaultTask,Default,NULL
-FREERTOS.configTOTAL_HEAP_SIZE=7168
+FREERTOS.configTOTAL_HEAP_SIZE=15360
 File.Version=6
 IWDG.IPParameters=Prescaler,Reload
 IWDG.Prescaler=IWDG_PRESCALER_32

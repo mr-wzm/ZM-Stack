@@ -89,6 +89,12 @@ void MX_IWDG_Init(void)
 *****************************************************************/
 void systemFeedDog( void )
 {
+    static uint8_t count = 0;
+    if( ((++count) % 50) == 0 )
+    {
+#include "gpio.h"
+        TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
+    }
     LL_IWDG_ReloadCounter(IWDG);
 }
 
