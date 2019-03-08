@@ -56,6 +56,7 @@
  *************************************************************************************************************************/
 static bool             transFlag = false;
 static TaskHandle_t     notifyTask = NULL;
+static E_transmitType   transmitType = NO_TRANS;
 /*************************************************************************************************************************
  *                                                  EXTERNAL VARIABLES                                                   *
  *************************************************************************************************************************/
@@ -322,17 +323,20 @@ static void getChannelStarus( void )
 *****************************************************************/
 static void transmitNoAck( void )
 {
-    if(++macPIB.retransmit < MAC_RETRANSMIT_NUM)
+    if( transmitType == T_RETRANSMIT )
     {
-        transFlag = false;
-        xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
+        if( ++getRetransmitCurrentPacket()->m_retransmit < MAC_RETRANSMIT_NUM )
+        {
+            transFlag = false;
+            xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
+        }
+        else
+        {
+            retransmitFreePacket(getRetransmitCurrentPacket());
+            return;
+        }
     }
-    else
-    {
-        /* transmit faild */
-        //macPIB.retransmit = 0;
-        transmitFreeHeadData();
-    }
+    transmitRetransmit(transmitType);
 }
 /*****************************************************************
 * DESCRIPTION: loraReceiveDone
@@ -488,7 +492,7 @@ static void loraCadDone( uint8_t a_detected )
             else
             {
                 //transFlag = false;
-                transmitSendData();
+                transmitType = transmitSendData();
             }
         }
         

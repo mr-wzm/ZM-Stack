@@ -73,7 +73,12 @@ typedef enum
     //CTS_ORDER,
 }E_cmdType;
 
-
+typedef enum
+{
+    NO_TRANS = 0,
+    T_TRANSMIT,
+    T_RETRANSMIT,
+}E_transmitType;
 
 /*
  * Addr type
@@ -96,7 +101,7 @@ typedef struct
     uint8_t     NB;
     uint8_t     CW;
     uint8_t     BE;
-    uint8_t     retransmit;
+    //uint8_t     retransmit;
 }t_macCsmaParm;
 
 /*
@@ -216,6 +221,7 @@ typedef struct
 typedef struct T_transmitQueue
 {
     struct T_transmitQueue      *m_next;
+    uint8_t                      m_retransmit;
     t_transmitPacket             m_transmitPacket;
 }t_transmitQueue;
 /*************************************************************************************************************************
@@ -260,6 +266,17 @@ E_cmdType transmitRx( t_transmitPacket *a_packet );
 *****************************************************************/
 t_transmitQueue * getTransmitPacket( void );
 /*****************************************************************
+* DESCRIPTION: getRetransmitCurrentPacket
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+t_transmitQueue * getRetransmitCurrentPacket( void );
+/*****************************************************************
 * DESCRIPTION: transmitSendData
 *     
 * INPUTS:
@@ -269,7 +286,18 @@ t_transmitQueue * getTransmitPacket( void );
 * NOTE:
 *     null
 *****************************************************************/
-void transmitSendData( void );
+E_transmitType transmitSendData( void );
+/*****************************************************************
+* DESCRIPTION: transmitRetransmit
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void transmitRetransmit( E_transmitType a_transmitType );
 /*****************************************************************
 * DESCRIPTION: transmitSendCommand
 *     
@@ -292,6 +320,28 @@ bool transmitSendCommand( void );
 *     null
 *****************************************************************/
 void transmitFreeHeadData( void );
+/*****************************************************************
+* DESCRIPTION: retransmitFreeCurrentPacket
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void retransmitFreePacket( t_transmitQueue *a_transmitFree );
+/*****************************************************************
+* DESCRIPTION: scanBeaconMessage
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void scanBeaconMessage( TaskHandle_t a_notifyTask );
 /*****************************************************************
 * DESCRIPTION: sensingBeaconMessage
 *     
