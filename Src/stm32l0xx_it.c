@@ -88,7 +88,7 @@ void HardFault_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-    //HAL_IncTick();
+    
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   osSystickHandler();
@@ -121,8 +121,6 @@ void EXTI4_15_IRQHandler(void)
     /* USER CODE END LL_EXTI_LINE_12 */
   }
   /* USER CODE BEGIN EXTI4_15_IRQn 1 */
-   
-  //vTaskNotifyGiveFromISR( loraTaskHandle, NULL );
    
   /* USER CODE END EXTI4_15_IRQn 1 */
 }

@@ -287,7 +287,7 @@ static void networkBuildSuccess( void )
 {
     setNetworkStatus( NETWORK_COOR );
     nwkAttribute.m_nwkStatus = true;
-    loraAllowJoinNetwork( 120000 );
+    //loraAllowJoinNetwork( 120000 );
 }
 /*****************************************************************
 * DESCRIPTION: getChannelStarus
