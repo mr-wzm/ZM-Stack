@@ -1014,6 +1014,10 @@ static void packetJoinRequest( t_joinRequestPacket *a_packet )
 *****************************************************************/
 static void packetJoinResponse( t_joinResponsePacket *a_packet )
 {
+    if( nwkAttribute.m_nwkStatus == true )
+    {
+        return;
+    }
     if( a_packet->m_joinSuccess == true )
     {
 #ifdef SELF_ORGANIZING_NETWORK
