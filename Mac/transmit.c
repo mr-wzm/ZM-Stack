@@ -108,11 +108,13 @@ static void     packetJoinResponse( t_joinResponsePacket *a_packet );
 * DESCRIPTION: transmitTx
 *     
 * INPUTS:
-*     
+*      a_dstAddr : Full ZB destination address: Nwk Addr.
+*      a_size : The size of the data.
+*      a_data : Data to be sent.
 * OUTPUTS:
-*     
+*     Add queue success or failure.
 * NOTE:
-*     null
+*     Add data in transmit queue.
 *****************************************************************/
 E_typeErr transmitTx( t_addrType *a_dstAddr, uint8_t a_size, uint8_t *a_data )
 {
@@ -181,11 +183,11 @@ E_typeErr transmitTx( t_addrType *a_dstAddr, uint8_t a_size, uint8_t *a_data )
 * DESCRIPTION: transmitRx
 *     
 * INPUTS:
-*     
+*     a_packet : Received packet.
 * OUTPUTS:
-*     
+*     The cmd type of the message.
 * NOTE:
-*     null
+*     Parse the received packet.
 *****************************************************************/
 E_cmdType transmitRx( t_transmitPacket *a_packet )
 {
@@ -249,11 +251,15 @@ E_cmdType transmitRx( t_transmitPacket *a_packet )
 * DESCRIPTION: transmitSendData
 *     
 * INPUTS:
-*     
+*     NULL
 * OUTPUTS:
-*     
+*     Current send type(transmit or retransmit),the value is in
+*       E_transmitType enum.
 * NOTE:
-*     null
+*     Lora send message package,and return send type.
+*     If the transmit queue has packet,the first send is in transmit
+*     queue.
+*     Else send retransmitCurrent pointer point packet.
 *****************************************************************/
 E_transmitType transmitSendData( void )
 {
@@ -297,11 +303,17 @@ E_transmitType transmitSendData( void )
 * DESCRIPTION: transmitRetransmit
 *     
 * INPUTS:
-*     
+*     a_transmitType : Current send type(transmit or retransmit),
+*                      the value is in E_transmitType enum.
 * OUTPUTS:
-*     
+*     NULL
 * NOTE:
-*     null
+*     If the input parameter is T_TRANSMIT, it is indicated as 
+*       transmit,and put it in retransmit queue( broadcast packet
+*       do not put in).
+*     If the input parameter is T_RETRANSMIT, it means the current
+*       transmission is a retransmission,and make the 
+*       retransmitCurrent pointer point next packet.
 *****************************************************************/
 void transmitRetransmit( E_transmitType a_transmitType )
 {
@@ -343,11 +355,14 @@ void transmitRetransmit( E_transmitType a_transmitType )
 * DESCRIPTION: transmitSendCommand
 *     
 * INPUTS:
-*     
+*     NULL
 * OUTPUTS:
-*     
+*     true : There are command packet need send and sended success.
+*     false: No have command packet need send.
 * NOTE:
-*     null
+*     Check if there are any command packages to send.
+*     And send the command package which in the transmitCommand 
+*     queue head.
 *****************************************************************/
 bool transmitSendCommand( void )
 {
@@ -408,11 +423,11 @@ bool transmitSendCommand( void )
 * DESCRIPTION: transmitFreeHeadData
 *     
 * INPUTS:
-*     
+*     NULL
 * OUTPUTS:
-*     
+*     NULL
 * NOTE:
-*     null
+*     Delete transmit head packet.
 *****************************************************************/
 void transmitFreeHeadData( void )
 {
@@ -458,11 +473,11 @@ void transmitFreeHeadData( void )
 * DESCRIPTION: retransmitFreeCurrentPacket
 *     
 * INPUTS:
-*     
+*     a_transmitFree : Which packet needed delete.
 * OUTPUTS:
-*     
+*     NULL
 * NOTE:
-*     null
+*     Delete packet in retransmit queue.
 *****************************************************************/
 void retransmitFreePacket( t_transmitQueue *a_transmitFree )
 {
