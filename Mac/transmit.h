@@ -163,7 +163,9 @@ typedef struct
     E_cmdType       m_cmdType;
     uint16_t        m_srcAddr;
     bool            m_joinSuccess;
+#ifdef SELF_ORGANIZING_NETWORK
     uint16_t        m_shortAddr;
+#endif
 }t_joinResponsePacket;
     
 /*

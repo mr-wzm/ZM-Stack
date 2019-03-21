@@ -923,9 +923,11 @@ static void transmitJoinResponse( E_addrMode a_addrMode, uint8_t *a_dstAddr, boo
         {
             memcpy(joinResponsePacket->m_dstAddr.addr.m_dstMacAddr, a_dstAddr, MAC_ADDR_LEN);
         }
+#ifdef SELF_ORGANIZING_NETWORK
+        joinResponsePacket->m_shortAddr = getRand();
+#endif        
         joinResponsePacket->m_joinSuccess = a_joinSuccess;
         joinResponsePacket->m_srcAddr = nwkAttribute.m_shortAddr;
-        joinResponsePacket->m_shortAddr = getRand();
         transmitCommandNode->m_size = sizeof(t_joinResponsePacket);
         transmitCommandNode->m_packet = joinResponsePacket;
         transmitCommandNode->m_cmdType = JOIN_RESPONSE_ORDER;
