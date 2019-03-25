@@ -61,14 +61,15 @@ typedef enum
     
 /* Other events */
     SYSTEM_FEED_DOG_EVENT,
+    LOW_POWER_CAD_POLL_EVENT,
     
 }E_timerEvent;
     
 typedef enum
 {
-    SINGLE_TIMER = 0U,
-    RELOAD_TIMER,
-    ALL_TYPE_TIMER,
+    SINGLE_TIMER = 0U,       //single timer
+    RELOAD_TIMER,            //reload timer
+    ALL_TYPE_TIMER,          //single and reload timer
     NO_TIMER,
 }E_timerType;
 /*************************************************************************************************************************

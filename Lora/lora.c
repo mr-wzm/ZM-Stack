@@ -187,8 +187,6 @@ void loraProcess( void *parm )
             /* Set the network status to join request */
             setNetworkStatus( NETWORK_JOIN_REQUEST );
             startReloadTimer( NETWORK_JOIN_NWK_EVENT, JOIN_REQUEST_INTERVAL_TIME, transmitJoinRequest );
-            /* Freed dog,It takes a lot of time here */
-            systemFeedDog();
             
             eventId ^= (uint32_t)LORA_NOTIFY_TRANSMIT_JOIN_REQUEST;
         }
@@ -287,7 +285,6 @@ static void networkBuildSuccess( void )
 {
     setNetworkStatus( NETWORK_COOR );
     nwkAttribute.m_nwkStatus = true;
-    //loraAllowJoinNetwork( 120000 );
 }
 /*****************************************************************
 * DESCRIPTION: getChannelStarus
@@ -357,20 +354,11 @@ static void loraReceiveDone( uint8_t *a_data, uint16_t a_size )
         xTaskNotify( loraTaskHandle, LORA_NOTIFY_SET_PANID, eSetBits );
     }
 #endif
-    //TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
-    static uint8_t notifyBuf[20];
-    uint32_t notifyPoint = (uint32_t)notifyBuf;
+
     switch( transmitRx( (t_transmitPacket *)a_data ) )
     {
     case DATA_ORDER:
-        if( getNetworkStatus() == NETWORK_COOR )
-        {
-           // memset( notifyBuf, 0, 20 );
-            memcpy( notifyBuf, ((t_transmitPacket *)a_data)->m_data, ((t_transmitPacket *)a_data)->m_size );
-            notifyBuf[((t_transmitPacket *)a_data)->m_size + 1] = (uint8_t)(((t_transmitPacket *)a_data)->m_srcAddr >> 8);
-            notifyBuf[((t_transmitPacket *)a_data)->m_size] = (uint8_t)(((t_transmitPacket *)a_data)->m_srcAddr);
-            xTaskNotify( networkTaskHandle, notifyPoint, eSetValueWithOverwrite );
-        }
+
         break;
     default:
         break;
