@@ -135,7 +135,7 @@ void USART4_5_IRQHandler(void)
     HAL_UART_IRQHandler( &huart4 );
     
   /* USER CODE END USART4_5_IRQn 0 */
-    HAL_UART_IRQHandler(&huart4);
+  HAL_UART_IRQHandler(&huart4);
   /* USER CODE BEGIN USART4_5_IRQn 1 */
 
   /* USER CODE END USART4_5_IRQn 1 */
