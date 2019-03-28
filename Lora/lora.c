@@ -43,6 +43,8 @@
 #define BEACON_INTERCAL_TIME                     500
 /* wait ack max time(ms) */
 #define TRANSMIT_ACK_WAIT_TIME                   200
+/* Cad poll time(ms) */
+#define CAD_POLL_TIME                            1000
 /*************************************************************************************************************************
  *                                                      CONSTANTS                                                        *
  *************************************************************************************************************************/
@@ -215,6 +217,28 @@ void loraProcess( void *parm )
         }
         taskYIELD();
     }
+}
+
+/*****************************************************************
+* DESCRIPTION: loraEnterLowPower
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void loraEnterLowPower( void )
+{
+#if configUSE_TICKLESS_IDLE == 1
+    loraEnterSleep();
+    //stopTimer();
+    if( nwkAttribute.m_nwkStatus )
+    {
+        startSingleTimer( LOW_POWER_CAD_POLL_EVENT, CAD_POLL_TIME, getChannelStarus );
+    }
+#endif
 }
 
 /*****************************************************************

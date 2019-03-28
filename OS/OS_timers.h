@@ -84,6 +84,7 @@ typedef struct T_timerList
     E_timerEvent                m_timerEvent;
     uint32_t                    m_time;
     bool                        m_reloadTimer;
+    //bool                        m_timerActive;
     timerCallback_t             m_timerCallback;
     struct T_timerList         *m_next;
 }t_timerList;
@@ -152,6 +153,17 @@ E_typeErr startReloadTimer( E_timerEvent a_timerEvent, uint32_t a_time, timerCal
 *     null
 *****************************************************************/
 E_timerType getTimerType( E_timerEvent a_timerEvent );
+/*****************************************************************
+* DESCRIPTION: getTimerIsActive
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+bool getTimerIsActive( E_timerEvent a_timerEvent, E_timerType a_timerType );
 /*****************************************************************
 * DESCRIPTION: stopTimer
 *     

@@ -256,6 +256,36 @@ E_timerType getTimerType( E_timerEvent a_timerEvent )
 }
 
 /*****************************************************************
+* DESCRIPTION: getTimerIsActive
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+bool getTimerIsActive( E_timerEvent a_timerEvent, E_timerType a_timerType )
+{
+    t_timerList *timerListNode = NULL;
+    
+    if( a_timerType == SINGLE_TIMER )
+    {
+        timerListNode = findTimer(a_timerEvent, false);
+    }
+    else if( a_timerType == RELOAD_TIMER )
+    {
+        timerListNode = findTimer(a_timerEvent, true);
+    }
+    if( timerListNode )
+    {
+        return xTimerIsTimerActive( timerListNode->m_timerHandle );
+    }
+    /* No have the timer */
+    return false;
+}
+
+/*****************************************************************
 * DESCRIPTION: stopTimer
 *     
 * INPUTS:
