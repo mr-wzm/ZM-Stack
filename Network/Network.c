@@ -117,8 +117,8 @@ void networkProcess( void *parm )
         networkStart();
 
         networkRun();
-        
-        vTaskDelay(10);
+        /* Network process is error,It should never get here */
+        resetSystem();
     }
 }
 
@@ -166,14 +166,24 @@ void setNetworkStatus( E_nwkStatus a_status )
 static void networkStart( void )
 {
     bool tempState = false;
+    
     while(1)
     {
         if( g_networkStatus == NETWORK_COOR || 
             g_networkStatus == NETWORK_DEVICE )
         {
             tempState = true;
+            break;
         }
-
+        else if( g_networkStatus == NETWORK_HOLD )
+        {
+            uint32_t events = 0;
+            while(1)
+            {
+                xTaskNotifyWait( (uint32_t)0, ULONG_MAX, &events, portMAX_DELAY );
+                
+            }
+        }
         if( !tempState )
         {
 #ifdef SELF_ORGANIZING_NETWORK

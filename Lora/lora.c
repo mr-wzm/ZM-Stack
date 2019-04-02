@@ -232,10 +232,25 @@ void loraProcess( void *parm )
 void loraEnterLowPower( void )
 {
 #if configUSE_TICKLESS_IDLE == 1
+    t_timerActiveList timerList = whichTimerIsActive();
+    /* No timer task is working */
+    if( timerList.m_activeNum > 1 )
+    {
+        for( int count = timerList.m_activeNum; count > 0; count-- )
+        {
+            if( timerList.m_activeList[count] == SYSTEM_FEED_DOG_EVENT )
+            {
+                continue;
+            }
+            stopTimer( (E_timerEvent)timerList.m_activeList[count], ALL_TYPE_TIMER );
+        }
+    }
+    vPortFree(timerList.m_activeList);
     loraEnterSleep();
-    //stopTimer();
     if( nwkAttribute.m_nwkStatus )
     {
+        systemFeedDog();
+        resetTimer( SYSTEM_FEED_DOG_EVENT, RELOAD_TIMER );  //Sync feed dog timer.
         startSingleTimer( LOW_POWER_CAD_POLL_EVENT, CAD_POLL_TIME, getChannelStarus );
     }
 #endif

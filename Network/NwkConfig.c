@@ -22,7 +22,6 @@
  *************************************************************************************************************************/
 #include "loraConfig.h"
 #include "attribute.h"
-//#include "wwdg.h"
 #include "OS_timers.h"
 #include "lora.h"
 #include "lora_driver.h"

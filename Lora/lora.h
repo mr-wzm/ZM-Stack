@@ -91,7 +91,6 @@ extern t_channelStatus              channelStatus;
 *     Initialize lora
 *****************************************************************/
 void loraInit( void );
-
 /*****************************************************************
 * DESCRIPTION: loraProcess
 *     
@@ -103,6 +102,17 @@ void loraInit( void );
 *     null
 *****************************************************************/
 void loraProcess( void *parm );
+/*****************************************************************
+* DESCRIPTION: loraEnterLowPower
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void loraEnterLowPower( void );
 /*****************************************************************
 * DESCRIPTION: loraAllowJoinNetwork
 *     
