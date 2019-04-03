@@ -27,6 +27,7 @@
 #include "NwkConfig.h"
 #include "transmit.h"
 #include "lora.h"
+#include "zigbee.h"
 #include "lora_driver.h"
 #include "Network.h"
 /*************************************************************************************************************************
@@ -84,6 +85,11 @@ void networkInit( void )
 {
     nwkAttributeRead();
     
+#ifdef SELF_ORGANIZING_NETWORK
+#ifdef DEVICE_TYPE_COOR
+    g_networkStatus = NETWORK_INIT;
+#endif
+#endif
     if( nwkAttribute.m_nwkStatus == true &&
         nwkAttribute.m_panId != 0x0000 )
     {
@@ -167,6 +173,8 @@ static void networkStart( void )
 {
     bool tempState = false;
     
+    zigbeeUartInit();
+    
     while(1)
     {
         if( g_networkStatus == NETWORK_COOR || 
@@ -177,11 +185,29 @@ static void networkStart( void )
         }
         else if( g_networkStatus == NETWORK_HOLD )
         {
-            uint32_t events = 0;
+            uint32_t eventId = 0;
             while(1)
             {
-                xTaskNotifyWait( (uint32_t)0, ULONG_MAX, &events, portMAX_DELAY );
-                
+                eventId = 0;
+                /* wait task notify */
+                xTaskNotifyWait( (uint32_t)0, ULONG_MAX, &eventId, portMAX_DELAY );
+                /* Uart receive done */
+                if( (eventId & NETWORK_NOFITY_UART_RX_DONE) == NETWORK_NOFITY_UART_RX_DONE )
+                {
+                    uartReceiveDone();
+                    eventId ^= NETWORK_NOFITY_UART_RX_DONE;
+                }
+                /* Lora join network */
+                else if( (eventId & NETWORK_NOFITY_JOIN_START) == NETWORK_NOFITY_JOIN_START )
+                {
+                    break;
+                }
+                /* Returns the untreated event */
+                if( eventId )
+                {
+                    xTaskNotify( networkTaskHandle, eventId, eSetBits );
+                }
+                taskYIELD();
             }
         }
         if( !tempState )
@@ -227,13 +253,23 @@ static void networkStart( void )
 *****************************************************************/
 static void networkRun( void )
 {
-    uint32_t rcvData;
- 
+    uint32_t eventId = 0;
     while(1)
     {
-        
-        xTaskNotifyWait( (uint32_t)0, ULONG_MAX, &rcvData, portMAX_DELAY );
-
+        eventId = 0;
+        /* wait task notify */
+        xTaskNotifyWait( (uint32_t)0, ULONG_MAX, &eventId, portMAX_DELAY );
+        /* Uart receive done */
+        if( (eventId & NETWORK_NOFITY_UART_RX_DONE) == NETWORK_NOFITY_UART_RX_DONE )
+        {
+            uartReceiveDone();
+            eventId ^= NETWORK_NOFITY_UART_RX_DONE;
+        }
+        /* Returns the untreated event */
+        if( eventId )
+        {
+            xTaskNotify( networkTaskHandle, eventId, eSetBits );
+        }
         taskYIELD();
     }
 }

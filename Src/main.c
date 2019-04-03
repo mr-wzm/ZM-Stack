@@ -50,6 +50,7 @@
 #include "main.h"
 #include "stm32l0xx_hal.h"
 #include "cmsis_os.h"
+#include "dma.h"
 #include "iwdg.h"
 #include "spi.h"
 #include "usart.h"
@@ -98,7 +99,7 @@ static void systickConfig( void );
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-    
+  taskENTER_CRITICAL();           //Enter the critical area
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -119,6 +120,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_SPI1_Init();
   MX_USART4_UART_Init();
   MX_IWDG_Init();
@@ -132,6 +134,7 @@ int main(void)
 
   osTaskInit();
   
+  taskEXIT_CRITICAL();            //Exit the critical area
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */
@@ -253,6 +256,8 @@ void _Error_Handler(char *file, int line)
   /* User can add his own implementation to report the HAL error return state */
   while(1)
   {
+      /* Reset */
+      resetSystem();
   }
   /* USER CODE END Error_Handler_Debug */
 }

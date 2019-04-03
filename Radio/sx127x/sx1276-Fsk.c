@@ -257,14 +257,17 @@ uint8_t SX1276FskGetOpMode( void )
 int32_t SX1276FskReadFei( void )
 {
     SX1276ReadBuffer( REG_FEIMSB, &SX1276->RegFeiMsb, 2 );                          // Reads the FEI value
-
-    return ( int32_t )( double )( ( ( uint16_t )SX1276->RegFeiMsb << 8 ) | ( uint16_t )SX1276->RegFeiLsb ) * ( double )FREQ_STEP;
+    //If you shuld use this function please uncomment it.
+    //return ( int32_t )( double )( ( ( uint16_t )SX1276->RegFeiMsb << 8 ) | ( uint16_t )SX1276->RegFeiLsb ) * ( double )FREQ_STEP;
+    return 0;
 }
 
 int32_t SX1276FskReadAfc( void )
 {
     SX1276ReadBuffer( REG_AFCMSB, &SX1276->RegAfcMsb, 2 );                            // Reads the AFC value
-    return ( int32_t )( double )( ( ( uint16_t )SX1276->RegAfcMsb << 8 ) | ( uint16_t )SX1276->RegAfcLsb ) * ( double )FREQ_STEP;
+    //If you shuld use this function please uncomment it.
+    //return ( int32_t )( double )( ( ( uint16_t )SX1276->RegAfcMsb << 8 ) | ( uint16_t )SX1276->RegAfcLsb ) * ( double )FREQ_STEP;
+    return 0;
 }
 
 uint8_t SX1276FskReadRxGain( void )

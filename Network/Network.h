@@ -33,6 +33,16 @@ extern "C"
 /* network task depth. */
 #define NETWORK_TASK_DEPTH              256
 
+    
+    
+    
+/******************* Lora Task Notify Events **********************/
+/**
+ * Min :BV(0)
+ * Max :BV(31)
+ */
+#define NETWORK_NOFITY_JOIN_START                           BV(0)
+#define NETWORK_NOFITY_UART_RX_DONE                         BV(1)
 /*************************************************************************************************************************
  *                                                      CONSTANTS                                                        *
  *************************************************************************************************************************/
@@ -43,6 +53,7 @@ extern "C"
 typedef enum
 {
     NETWORK_HOLD,
+    NETWORK_INIT,
     NETWORK_FIND_CHANNEL,
     NETWORK_BUILD,
     NETWORK_COOR,
