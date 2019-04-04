@@ -150,14 +150,14 @@ void DMA1_Channel2_3_IRQHandler(void)
 void USART4_5_IRQHandler(void)
 {
   /* USER CODE BEGIN USART4_5_IRQn 0 */
-  if( __HAL_UART_GET_IT(&huart4, USART_CR1_IDLEIE) )
+  if( __HAL_UART_GET_IT(&huart4, UART_IT_IDLE) )
   {
       /* Stop dma transmit */
       HAL_UART_DMAStop(&huart4);
       /* Send notify to task */
       xTaskNotify( networkTaskHandle, NETWORK_NOFITY_UART_RX_DONE, eSetBits );
       /* Clear IDLE interrupt flag */
-      __HAL_UART_CLEAR_IT(&huart4, USART_CR1_IDLEIE);
+      __HAL_UART_CLEAR_IT(&huart4, UART_FLAG_IDLE);
   }
   /* USER CODE END USART4_5_IRQn 0 */
   HAL_UART_IRQHandler(&huart4);

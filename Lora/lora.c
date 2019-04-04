@@ -518,7 +518,6 @@ static void loraCadDone( uint8_t a_detected )
             }
             else
             {
-                //transFlag = false;
                 transmitType = transmitSendData();
             }
         }

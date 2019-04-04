@@ -145,7 +145,9 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     HAL_NVIC_SetPriority(USART4_5_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(USART4_5_IRQn);
   /* USER CODE BEGIN USART4_MspInit 1 */
-    __HAL_DMA_DISABLE(&hdma_usart4_rx);
+    __HAL_UART_CLEAR_IT(&huart4, UART_FLAG_IDLE);
+    __HAL_DMA_DISABLE_IT(&hdma_usart4_rx, DMA_IT_TC);
+    __HAL_DMA_DISABLE_IT(&hdma_usart4_rx, DMA_IT_HT);
   /* USER CODE END USART4_MspInit 1 */
   }
 }

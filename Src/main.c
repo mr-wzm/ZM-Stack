@@ -99,7 +99,7 @@ static void systickConfig( void );
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  taskENTER_CRITICAL();           //Enter the critical area
+  
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -134,7 +134,6 @@ int main(void)
 
   osTaskInit();
   
-  taskEXIT_CRITICAL();            //Exit the critical area
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */

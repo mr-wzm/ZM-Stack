@@ -157,8 +157,6 @@ E_typeErr transmitTx( t_addrType *a_dstAddr, uint8_t a_size, uint8_t *a_data )
         {
             //macPIB.retransmit = 0;
             transmitHead = packetQueue;
-            /* Send notify to lora process */
-            xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
         }
         else
         {
@@ -168,6 +166,8 @@ E_typeErr transmitTx( t_addrType *a_dstAddr, uint8_t a_size, uint8_t *a_data )
         transmitEnd = packetQueue;
         /* Record queue number */
         g_queueCount++;
+        /* Send notify to lora process */
+        xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
 
         return E_SUCCESS;
     }
@@ -342,8 +342,14 @@ void transmitRetransmit( E_transmitType a_transmitType )
             transmitHead = transmitHead->m_next;
             retransmitNode->m_next->m_next = NULL;
         }
+        if( transmitHead == NULL )
+        {
+            transmitEnd = NULL;
+        }
         g_queueCount--;
         g_retransmitQueueCount++;
+        /* Send notify to lora process */
+        xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
     }
     else if( a_transmitType == T_RETRANSMIT )
     {
@@ -495,6 +501,7 @@ void retransmitFreePacket( t_transmitQueue *a_transmitFree )
         }
         /* Free packet */
         vPortFree(retransmitFree);
+        g_retransmitQueueCount--;
     }
     else
     {
@@ -513,6 +520,7 @@ void retransmitFreePacket( t_transmitQueue *a_transmitFree )
             }
             /* Free packet */
             vPortFree(retransmitFree);
+            g_retransmitQueueCount--;
         }
     }
     if( transmitHead || retransmitHead )
@@ -624,6 +632,7 @@ static void retransmitCurrentPointNext( void )
     {
         retransmitCurrent = retransmitHead;
     }
+    checkTransmitQueue();
 }
 /*****************************************************************
 * DESCRIPTION: checkTransmitQueue

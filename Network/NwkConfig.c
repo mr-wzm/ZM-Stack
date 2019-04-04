@@ -51,7 +51,10 @@ static uint8_t g_channelNum = 0;
 /*************************************************************************************************************************
  *                                                  EXTERNAL VARIABLES                                                   *
  *************************************************************************************************************************/
- 
+/* 
+ * network process task handle.
+ */
+TaskHandle_t                    nwkConfigTaskHandle;
 /*************************************************************************************************************************
  *                                                    LOCAL VARIABLES                                                    *
  *************************************************************************************************************************/
@@ -67,7 +70,56 @@ static void     detectionChannelTimeout( void );
 /*************************************************************************************************************************
  *                                                    LOCAL FUNCTIONS                                                    *
  *************************************************************************************************************************/
- 
+
+/*****************************************************************
+* DESCRIPTION: nwkConfigProcess
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void nwkConfigProcess( void *parm )
+{
+    bool tempState = false;
+    
+    while(1)
+    {
+        if( !tempState )
+        {
+#ifdef SELF_ORGANIZING_NETWORK
+#ifdef DEVICE_TYPE_COOR
+            setNetworkStatus(NETWORK_FIND_CHANNEL);
+            tempState = findChannel();
+#else
+            setNetworkStatus(NETWORK_JOIN_SCAN);
+            tempState = joinNetwork();
+#endif
+#else
+            if( nwkAttribute.m_shortAddr == 0x0000 )
+            {
+                setNetworkStatus(NETWORK_FIND_CHANNEL);
+                tempState = findChannel();
+            }
+            else
+            {
+                setNetworkStatus(NETWORK_JOIN_SCAN);
+                tempState = joinNetwork();
+            }
+#endif
+        }
+        else
+        {
+            xTaskNotify( networkTaskHandle, NETWORK_NOFITY_INIT_SUCCESS, eSetBits );
+            vTaskDelay(100);
+        }
+        taskYIELD();
+    }
+}
+     
+     
 /*****************************************************************
 * DESCRIPTION: findChannel
 *     
