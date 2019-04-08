@@ -38,11 +38,15 @@
 
 /* USER CODE BEGIN 0 */
 #include "loraConfig.h"
+#include "network.h"
 #include "OStask.h"
+#include "zigbee.h"
 #include "lora.h"
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern DMA_HandleTypeDef hdma_usart4_rx;
+extern DMA_HandleTypeDef hdma_usart4_tx;
 extern UART_HandleTypeDef huart4;
 
 /******************************************************************************/
@@ -126,14 +130,38 @@ void EXTI4_15_IRQHandler(void)
 }
 
 /**
+* @brief This function handles DMA1 channel 2 and channel 3 interrupts.
+*/
+void DMA1_Channel2_3_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel2_3_IRQn 0 */
+  if(__HAL_DMA_GET_FLAG(&hdma_usart4_tx, __HAL_DMA_GET_TC_FLAG_INDEX(&hdma_usart4_tx)))
+  {
+      uartDmaSendDone();
+  }
+  /* USER CODE END DMA1_Channel2_3_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_usart4_rx);
+  HAL_DMA_IRQHandler(&hdma_usart4_tx);
+  /* USER CODE BEGIN DMA1_Channel2_3_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel2_3_IRQn 1 */
+}
+
+/**
 * @brief This function handles USART4 and USART5 interrupt.
 */
 void USART4_5_IRQHandler(void)
 {
   /* USER CODE BEGIN USART4_5_IRQn 0 */
-
-    HAL_UART_IRQHandler( &huart4 );
-    
+  if( __HAL_UART_GET_IT(&huart4, UART_IT_IDLE) )
+  {
+      /* Stop dma transmit */
+      HAL_UART_DMAStop(&huart4);
+      /* Send notify to task */
+      xTaskNotify( networkTaskHandle, NETWORK_NOFITY_UART_RX_DONE, eSetBits );
+      /* Clear IDLE interrupt flag */
+      __HAL_UART_CLEAR_IT(&huart4, UART_FLAG_IDLE);
+  }
   /* USER CODE END USART4_5_IRQn 0 */
   HAL_UART_IRQHandler(&huart4);
   /* USER CODE BEGIN USART4_5_IRQn 1 */

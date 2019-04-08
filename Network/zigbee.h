@@ -1,35 +1,36 @@
 /*****************************************************************
-* Copyright (C) 2017 60Plus Technology Co.,Ltd.*
+* Copyright (C) 2019 60Plus Technology Co.,Ltd.*
 ******************************************************************
-* NwkConfig.h
+* zigbee.h
 *
 * DESCRIPTION:
-*     network config
+*     Communication with zigbee
 * AUTHOR:
 *     Ziming
 * CREATED DATE:
-*     2019/1/10
+*     2019/4/2
 * REVISION:
 *     v0.1
 *
 * MODIFICATION HISTORY
 * --------------------
 * $Log:$
+* <author>  <time>      <version >  <desc>
+* Ziming      2019/4/2   v0.1        Created this file.
 *
 *****************************************************************/
-#ifndef NWKCONFIG_H
-#define NWKCONFIG_H
+#ifndef ZIGBEE_H
+#define ZIGBEE_H
+ 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+ 
 /*************************************************************************************************************************
  *                                                        MACROS                                                         *
  *************************************************************************************************************************/
-/* nwkConfig task priority. */
-#define NWKCONFIG_TASK_PRIORITY           4
-/* nwkConfig task depth. */
-#define NWKCONFIG_TASK_DEPTH              64
+ 
 /*************************************************************************************************************************
  *                                                      CONSTANTS                                                        *
  *************************************************************************************************************************/
@@ -37,24 +38,29 @@ extern "C"
 /*************************************************************************************************************************
  *                                                       TYPEDEFS                                                        *
  *************************************************************************************************************************/
-
-/**
+/*
  *
- */
-typedef struct
+ */    
+typedef enum
 {
-    double      m_RSSI;
-    uint16_t    m_panId;
-}t_rssiValue;
-/*************************************************************************************************************************
- *                                                  EXTERNAL VARIABLES                                                   *
- *************************************************************************************************************************/
-extern TaskHandle_t                    nwkConfigTaskHandle;
+    UART_IDLE = 0,
+    UART_RX,
+    UART_TX,
+}E_zigbeeUartStatus;
+/*
+ *
+ */    
+typedef struct T_zigbeeUartStruct
+{
+    bool                        m_uartBusy;
+    uint16_t                    m_dataSize;
+    uint8_t                     m_data[LORA_BUFFER_SIZE_MAX];
+}t_zigbeeUartStruct;
 /*************************************************************************************************************************
  *                                                   PUBLIC FUNCTIONS                                                    *
  *************************************************************************************************************************/
 /*****************************************************************
-* DESCRIPTION: nwkConfigProcess
+* DESCRIPTION: zigbeeUartInit
 *     
 * INPUTS:
 *     
@@ -63,9 +69,9 @@ extern TaskHandle_t                    nwkConfigTaskHandle;
 * NOTE:
 *     null
 *****************************************************************/
-void nwkConfigProcess( void *parm );
+void zigbeeUartInit( void );
 /*****************************************************************
-* DESCRIPTION: findChannel
+* DESCRIPTION: zigbeeUartStartReceive
 *     
 * INPUTS:
 *     
@@ -74,9 +80,9 @@ void nwkConfigProcess( void *parm );
 * NOTE:
 *     null
 *****************************************************************/
-bool findChannel( void );
+E_typeErr zigbeeUartStartReceive( void );
 /*****************************************************************
-* DESCRIPTION: joinNetwork
+* DESCRIPTION: zigbeeUartSend
 *     
 * INPUTS:
 *     
@@ -85,9 +91,9 @@ bool findChannel( void );
 * NOTE:
 *     null
 *****************************************************************/
-bool joinNetwork( void );
+E_typeErr zigbeeUartSend( uint8_t *a_data, uint16_t a_size );
 /*****************************************************************
-* DESCRIPTION: networConfigkStart
+* DESCRIPTION: uartDmaSendDone
 *     
 * INPUTS:
 *     
@@ -96,9 +102,9 @@ bool joinNetwork( void );
 * NOTE:
 *     null
 *****************************************************************/
-void networConfigkStart( void );
+void uartDmaSendDone( void );
 /*****************************************************************
-* DESCRIPTION: allowJoinNetwork
+* DESCRIPTION: uartReceiveDone
 *     
 * INPUTS:
 *     
@@ -107,32 +113,9 @@ void networConfigkStart( void );
 * NOTE:
 *     null
 *****************************************************************/
-void allowJoinNetwork( uint32_t a_time );
-/*****************************************************************
-* DESCRIPTION: closeAllowJoinNetwork
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void closeAllowJoinNetwork( void );
-    /*****************************************************************
-* DESCRIPTION: leaveNetwork
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void leaveNetwork( void );
-
- 
+void uartReceiveDone( void );
 #ifdef __cplusplus
 }
 #endif
-#endif /* NwkConfig.h */
+ 
+#endif /* zigbee.h */

@@ -114,28 +114,6 @@ void loraProcess( void *parm );
 *****************************************************************/
 void loraEnterLowPower( void );
 /*****************************************************************
-* DESCRIPTION: loraAllowJoinNetwork
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void loraAllowJoinNetwork( uint32_t a_time );
-/*****************************************************************
-* DESCRIPTION: loraCloseBeacon
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void loraCloseBeacon( void );
-/*****************************************************************
 * DESCRIPTION: sensingChannel
 *     
 * INPUTS:

@@ -51,7 +51,10 @@ static uint8_t g_channelNum = 0;
 /*************************************************************************************************************************
  *                                                  EXTERNAL VARIABLES                                                   *
  *************************************************************************************************************************/
- 
+/* 
+ * network process task handle.
+ */
+TaskHandle_t                    nwkConfigTaskHandle;
 /*************************************************************************************************************************
  *                                                    LOCAL VARIABLES                                                    *
  *************************************************************************************************************************/
@@ -67,7 +70,56 @@ static void     detectionChannelTimeout( void );
 /*************************************************************************************************************************
  *                                                    LOCAL FUNCTIONS                                                    *
  *************************************************************************************************************************/
- 
+
+/*****************************************************************
+* DESCRIPTION: nwkConfigProcess
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void nwkConfigProcess( void *parm )
+{
+    bool tempState = false;
+    
+    while(1)
+    {
+        if( !tempState )
+        {
+#ifdef SELF_ORGANIZING_NETWORK
+#ifdef DEVICE_TYPE_COOR
+            setNetworkStatus(NETWORK_FIND_CHANNEL);
+            tempState = findChannel();
+#else
+            setNetworkStatus(NETWORK_JOIN_SCAN);
+            tempState = joinNetwork();
+#endif
+#else
+            if( nwkAttribute.m_shortAddr == 0x0000 )
+            {
+                setNetworkStatus(NETWORK_FIND_CHANNEL);
+                tempState = findChannel();
+            }
+            else
+            {
+                setNetworkStatus(NETWORK_JOIN_SCAN);
+                tempState = joinNetwork();
+            }
+#endif
+        }
+        else
+        {
+            xTaskNotify( networkTaskHandle, NETWORK_NOFITY_INIT_SUCCESS, eSetBits );
+            vTaskDelay(100);
+        }
+        taskYIELD();
+    }
+}
+     
+     
 /*****************************************************************
 * DESCRIPTION: findChannel
 *     
@@ -215,8 +267,63 @@ bool joinNetwork( void )
 #endif
     return false;
 }
-        
-    
+
+/*****************************************************************
+* DESCRIPTION: networConfigkStart
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void networConfigkStart( void )
+{
+    if( nwkAttribute.m_nwkStatus == false )
+    {
+        xTaskNotify( networkTaskHandle, NETWORK_NOFITY_INIT_START, eSetBits );
+    }
+}
+
+/*****************************************************************
+* DESCRIPTION: allowJoinNetwork
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void allowJoinNetwork( uint32_t a_time )
+{
+    if( getNetworkStatus() != NETWORK_COOR || a_time == 0 )
+    {
+        return;
+    }
+    /* Notify task send beacon packet start */
+    xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_BEACON, eSetBits );
+    /* Duration time */
+    startSingleTimer( LORA_ALLOW_JOIN_TIME_EVENT, a_time, NULL );
+}
+
+/*****************************************************************
+* DESCRIPTION: closeAllowJoinNetwork
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void closeAllowJoinNetwork( void )
+{
+    clearTimer( NETWORK_BEACON_EVENT, ALL_TYPE_TIMER );
+    clearTimer( LORA_ALLOW_JOIN_TIME_EVENT, ALL_TYPE_TIMER );
+}
+
 /*****************************************************************
 * DESCRIPTION: leaveNetwork
 *     
