@@ -28,6 +28,7 @@
 #include "radio.h"
 #include "transmit.h"
 #include "attribute.h"
+#include "zigbee.h"
 #include "OS_timers.h"
 #include "Network.h"
 #include "gpio.h"
@@ -140,6 +141,15 @@ void loraInit( void )
 void loraProcess( void *parm )
 {
     uint32_t eventId;
+    
+#if configUSE_TICKLESS_IDLE == 1
+    loraEnterSleep();
+#else
+    if(nwkAttribute.m_nwkStatus == true)
+    {
+        loraReceiveData();
+    }
+#endif
         
     while(1)
     {
@@ -149,7 +159,7 @@ void loraProcess( void *parm )
         /* Transmit data */
         if( (eventId & LORA_NOTIFY_TRANSMIT_START) == LORA_NOTIFY_TRANSMIT_START )
         {
-            if( !transFlag )
+            if( !transFlag && (getTransmitHeadPacket() || getRetransmitCurrentPacket()) )
             {
                 transFlag = true;
                 macPIB.BE = MAC_MIN_BE;
@@ -257,44 +267,6 @@ void loraEnterLowPower( void )
 }
 
 /*****************************************************************
-* DESCRIPTION: loraAllowJoinNetwork
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void loraAllowJoinNetwork( uint32_t a_time )
-{
-    if( getNetworkStatus() != NETWORK_COOR )
-    {
-        return;
-    }
-    /* Notify task send beacon packet start */
-    xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_BEACON, eSetBits );
-    /* Duration time */
-    startSingleTimer( LORA_ALLOW_JOIN_TIME_EVENT, a_time, NULL );
-}
-
-/*****************************************************************
-* DESCRIPTION: loraCloseBeacon
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void loraCloseBeacon( void )
-{
-    clearTimer( NETWORK_BEACON_EVENT, ALL_TYPE_TIMER );
-    clearTimer( LORA_ALLOW_JOIN_TIME_EVENT, ALL_TYPE_TIMER );
-}
-
-/*****************************************************************
 * DESCRIPTION: detectionChannel
 *     
 * INPUTS:
@@ -397,7 +369,7 @@ static void loraReceiveDone( uint8_t *a_data, uint16_t a_size )
     switch( transmitRx( (t_transmitPacket *)a_data ) )
     {
     case DATA_ORDER:
-
+        zigbeeUartSend( ((t_transmitPacket *)a_data)->m_data, ((t_transmitPacket *)a_data)->m_size );
         break;
     default:
         break;
@@ -448,22 +420,29 @@ static void loraSendDone( void )
     if( transFlag && macPIB.CW == 0 )
     {
         transFlag = false;
-        if( getTransmitPacket()->m_transmitPacket.m_dstAddr.addrMode != broadcastAddr )
+        if( transmitType == T_TRANSMIT )
         {
-            startSingleTimer( TRANSMIT_WAIT_ACK_EVENT, TRANSMIT_ACK_WAIT_TIME, transmitNoAck );
-        }
-        else
-        {
-            /* Num of broadcast times is BROADCAST_MAX_NUM */
-            if( ++broadcastCount < BROADCAST_MAX_NUM )
+            if( getTransmitHeadPacket()->m_transmitPacket.m_dstAddr.addrMode != broadcastAddr )
             {
-                xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
+                startSingleTimer( TRANSMIT_WAIT_ACK_EVENT, TRANSMIT_ACK_WAIT_TIME, transmitNoAck );
             }
             else
             {
-                broadcastCount = 0;
-                transmitFreeHeadData();
+                /* Num of broadcast times is BROADCAST_MAX_NUM */
+                if( ++broadcastCount < BROADCAST_MAX_NUM )
+                {
+                    xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
+                }
+                else
+                {
+                    broadcastCount = 0;
+                    transmitFreeHeadData();
+                }
             }
+        }
+        else if( transmitType == T_RETRANSMIT )
+        {
+            startSingleTimer( TRANSMIT_WAIT_ACK_EVENT, TRANSMIT_ACK_WAIT_TIME, transmitNoAck );
         }
     }
     loraReceiveData();
@@ -521,7 +500,11 @@ static void loraCadDone( uint8_t a_detected )
                 transmitType = transmitSendData();
             }
         }
-        
+        else
+        {
+            loraReceiveData();
+            checkTransmitQueue();
+        }
         break;
     case RF_CHANNEL_ACTIVITY_DETECTED:
         if( transFlag )
@@ -539,7 +522,7 @@ static void loraCadDone( uint8_t a_detected )
             }
         }
         loraReceiveData();
-        startSingleTimer( TRANSMIT_NB_TIME_EVENT, getAvoidtime()+300, getChannelStarus );
+        startSingleTimer( TRANSMIT_NB_TIME_EVENT, getAvoidtime()+200, getChannelStarus );
         
         break;
     default:

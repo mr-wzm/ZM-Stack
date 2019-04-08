@@ -267,8 +267,63 @@ bool joinNetwork( void )
 #endif
     return false;
 }
-        
-    
+
+/*****************************************************************
+* DESCRIPTION: networConfigkStart
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void networConfigkStart( void )
+{
+    if( nwkAttribute.m_nwkStatus == false )
+    {
+        xTaskNotify( networkTaskHandle, NETWORK_NOFITY_INIT_START, eSetBits );
+    }
+}
+
+/*****************************************************************
+* DESCRIPTION: allowJoinNetwork
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void allowJoinNetwork( uint32_t a_time )
+{
+    if( getNetworkStatus() != NETWORK_COOR || a_time == 0 )
+    {
+        return;
+    }
+    /* Notify task send beacon packet start */
+    xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_BEACON, eSetBits );
+    /* Duration time */
+    startSingleTimer( LORA_ALLOW_JOIN_TIME_EVENT, a_time, NULL );
+}
+
+/*****************************************************************
+* DESCRIPTION: closeAllowJoinNetwork
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void closeAllowJoinNetwork( void )
+{
+    clearTimer( NETWORK_BEACON_EVENT, ALL_TYPE_TIMER );
+    clearTimer( LORA_ALLOW_JOIN_TIME_EVENT, ALL_TYPE_TIMER );
+}
+
 /*****************************************************************
 * DESCRIPTION: leaveNetwork
 *     

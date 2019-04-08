@@ -46,12 +46,11 @@
 /*************************************************************************************************************************
  *                                                   GLOBAL VARIABLES                                                    *
  *************************************************************************************************************************/
-static t_zigbeeUartStruct       g_uartWork;
+static t_zigbeeUartStruct       g_uartDmaIndex;
 /*************************************************************************************************************************
  *                                                  EXTERNAL VARIABLES                                                   *
  *************************************************************************************************************************/
 extern DMA_HandleTypeDef hdma_usart4_rx;
-extern DMA_HandleTypeDef hdma_usart4_tx;
 /*************************************************************************************************************************
  *                                                    LOCAL VARIABLES                                                    *
  *************************************************************************************************************************/
@@ -81,7 +80,7 @@ extern DMA_HandleTypeDef hdma_usart4_tx;
 *****************************************************************/
 void zigbeeUartInit( void )
 {
-    g_uartWork.m_uartBusy = false;
+    g_uartDmaIndex.m_uartBusy = false;
     /* Clear IDLE interrupt flag, Prevents an interrupt 
        from entering after initialization */
     __HAL_UART_CLEAR_IT(&huart4, UART_FLAG_IDLE);
@@ -101,15 +100,15 @@ void zigbeeUartInit( void )
 *****************************************************************/
 E_typeErr zigbeeUartStartReceive( void )
 {
-    if( g_uartWork.m_uartBusy == true )
+    if( g_uartDmaIndex.m_uartBusy == true )
     {
         /* Uart dma is busy */
         return E_ERR;
     }
     /* Initialization data buffer */
-    memset(g_uartWork.m_data, 0, LORA_BUFFER_SIZE_MAX);
+    memset(g_uartDmaIndex.m_data, 0, LORA_BUFFER_SIZE_MAX);
     /* Open uart dma receive */
-    HAL_UART_Receive_DMA(&huart4, g_uartWork.m_data, LORA_BUFFER_SIZE_MAX);
+    HAL_UART_Receive_DMA(&huart4, g_uartDmaIndex.m_data, LORA_BUFFER_SIZE_MAX);
     /* Enable uart IDLE interrupt */
     __HAL_UART_ENABLE_IT(&huart4, UART_IT_IDLE);
     /* Disable dma receive channel TC interrupt */
@@ -132,14 +131,14 @@ E_typeErr zigbeeUartStartReceive( void )
 *****************************************************************/
 E_typeErr zigbeeUartSend( uint8_t *a_data, uint16_t a_size )
 {
-    if( g_uartWork.m_uartBusy || a_data == NULL || a_size == 0 || a_size > LORA_BUFFER_SIZE_MAX )
+    if( g_uartDmaIndex.m_uartBusy || a_data == NULL || a_size == 0 || a_size > LORA_BUFFER_SIZE_MAX )
     {
         return E_ERR;
     }
-    g_uartWork.m_uartBusy = true;
-    g_uartWork.m_dataSize = a_size;
-    memcpy( g_uartWork.m_data, a_data, g_uartWork.m_dataSize );
-    HAL_UART_Transmit_DMA(&huart4, g_uartWork.m_data, g_uartWork.m_dataSize);
+    g_uartDmaIndex.m_uartBusy = true;
+    g_uartDmaIndex.m_dataSize = a_size;
+    memcpy( g_uartDmaIndex.m_data, a_data, g_uartDmaIndex.m_dataSize );
+    HAL_UART_Transmit_DMA(&huart4, g_uartDmaIndex.m_data, g_uartDmaIndex.m_dataSize);
     return E_SUCCESS;
 }
 
@@ -155,14 +154,11 @@ E_typeErr zigbeeUartSend( uint8_t *a_data, uint16_t a_size )
 *****************************************************************/
 void uartDmaSendDone( void )
 {
-    if(__HAL_DMA_GET_FLAG(&hdma_usart4_tx, __HAL_DMA_GET_TC_FLAG_INDEX(&hdma_usart4_tx)))
-    {
-        g_uartWork.m_uartBusy = false;
-        /* Stop dma transmit */
-        HAL_UART_DMAStop(&huart4);
-
-        zigbeeUartStartReceive();
-    }
+    g_uartDmaIndex.m_uartBusy = false;
+    /* Stop dma transmit */
+    HAL_UART_DMAStop(&huart4);
+    
+    zigbeeUartStartReceive();
 }
 
 /*****************************************************************
@@ -180,11 +176,11 @@ void uartReceiveDone( void )
     t_addrType dstAddr;
     
     /* Get data size */
-    g_uartWork.m_dataSize = (LORA_BUFFER_SIZE_MAX - __HAL_DMA_GET_COUNTER(&hdma_usart4_rx));
+    g_uartDmaIndex.m_dataSize = (LORA_BUFFER_SIZE_MAX - __HAL_DMA_GET_COUNTER(&hdma_usart4_rx));
     
     dstAddr.addrMode = pointAddr16Bit;
-    dstAddr.addr.m_dstShortAddr = 0x0000;
-    transmitTx( &dstAddr, g_uartWork.m_dataSize, g_uartWork.m_data );
+    dstAddr.addr.m_dstShortAddr = 0x3ABB;
+    transmitTx( &dstAddr, g_uartDmaIndex.m_dataSize, g_uartDmaIndex.m_data );
     
     zigbeeUartStartReceive();
 }

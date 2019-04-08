@@ -275,7 +275,7 @@
                 <option>
                     <name>CCAllowList</name>
                     <version>1</version>
-                    <state>11111110</state>
+                    <state>00000000</state>
                 </option>
                 <option>
                     <name>CCDebugInfo</name>
@@ -296,7 +296,6 @@
                 <option>
                     <name>IExtraOptions</name>
                     <state>-f $PROJ_DIR$\..\Common\Tools\loraConfig.cfg</state>
-                    <state>-f $PROJ_DIR$\..\Common\Tools\loraConfigLP.cfg</state>
                 </option>
                 <option>
                     <name>CCLangConformance</name>
@@ -355,7 +354,6 @@
                     <state>$PROJ_DIR$\..\Lora</state>
                     <state>$PROJ_DIR$\..\OS</state>
                     <state>$PROJ_DIR$\..\Mac</state>
-                    <state>$PROJ_DIR$\..\Zigbee</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -371,7 +369,7 @@
                 </option>
                 <option>
                     <name>CCOptLevel</name>
-                    <state>3</state>
+                    <state>0</state>
                 </option>
                 <option>
                     <name>CCOptStrategy</name>
@@ -380,7 +378,7 @@
                 </option>
                 <option>
                     <name>CCOptLevelSlave</name>
-                    <state>3</state>
+                    <state>0</state>
                 </option>
                 <option>
                     <name>CompilerMisraRules98</name>
@@ -1323,7 +1321,6 @@
                 </option>
                 <option>
                     <name>IExtraOptions</name>
-                    <state>-f $PROJ_DIR$\..\Common\Tools\loraConfig.cfg</state>
                     <state>-f $PROJ_DIR$\..\Common\Tools\loraConfigLP.cfg</state>
                 </option>
                 <option>
@@ -1383,7 +1380,6 @@
                     <state>$PROJ_DIR$\..\Lora</state>
                     <state>$PROJ_DIR$\..\OS</state>
                     <state>$PROJ_DIR$\..\Mac</state>
-                    <state>$PROJ_DIR$\..\Zigbee</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2270,6 +2266,12 @@
         <file>
             <name>$PROJ_DIR$\..\Network\NwkConfig.h</name>
         </file>
+        <file>
+            <name>$PROJ_DIR$\..\Network\zigbee.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\Network\zigbee.h</name>
+        </file>
     </group>
     <group>
         <name>OS</name>
@@ -2335,15 +2337,6 @@
             <excluded>
                 <configuration>Lora</configuration>
             </excluded>
-        </file>
-    </group>
-    <group>
-        <name>Zigbee</name>
-        <file>
-            <name>$PROJ_DIR$\..\Zigbee\zigbee.c</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\Zigbee\zigbee.h</name>
         </file>
     </group>
 </project>

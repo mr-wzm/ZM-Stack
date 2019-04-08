@@ -135,7 +135,10 @@ void EXTI4_15_IRQHandler(void)
 void DMA1_Channel2_3_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel2_3_IRQn 0 */
-  uartDmaSendDone();
+  if(__HAL_DMA_GET_FLAG(&hdma_usart4_tx, __HAL_DMA_GET_TC_FLAG_INDEX(&hdma_usart4_tx)))
+  {
+      uartDmaSendDone();
+  }
   /* USER CODE END DMA1_Channel2_3_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart4_rx);
   HAL_DMA_IRQHandler(&hdma_usart4_tx);

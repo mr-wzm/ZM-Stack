@@ -73,6 +73,9 @@ typedef enum
     //CTS_ORDER,
 }E_cmdType;
 
+/*
+ * Transmit type.
+ */
 typedef enum
 {
     NO_TRANS = 0,
@@ -266,7 +269,7 @@ E_cmdType transmitRx( t_transmitPacket *a_packet );
 * NOTE:
 *     null
 *****************************************************************/
-t_transmitQueue * getTransmitPacket( void );
+t_transmitQueue * getTransmitHeadPacket( void );
 /*****************************************************************
 * DESCRIPTION: getRetransmitCurrentPacket
 *     
@@ -367,7 +370,7 @@ void scanBeaconMessage( TaskHandle_t a_notifyTask );
 *****************************************************************/
 uint8_t getAvoidtime( void );
 /*****************************************************************
-* DESCRIPTION: transmitRtsTx
+* DESCRIPTION: checkTransmitQueue
 *     
 * INPUTS:
 *     
@@ -376,18 +379,7 @@ uint8_t getAvoidtime( void );
 * NOTE:
 *     null
 *****************************************************************/
-void transmitRtsTx( void );
-/*****************************************************************
-* DESCRIPTION: transmitCtsTx
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void transmitCtsTx( uint8_t a_dstAddr, uint16_t a_duration );
+void checkTransmitQueue( void );
 /*****************************************************************
 * DESCRIPTION: transmitBeacon
 *     

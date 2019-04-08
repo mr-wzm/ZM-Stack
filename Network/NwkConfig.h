@@ -86,6 +86,39 @@ bool findChannel( void );
 *     null
 *****************************************************************/
 bool joinNetwork( void );
+/*****************************************************************
+* DESCRIPTION: networConfigkStart
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void networConfigkStart( void );
+/*****************************************************************
+* DESCRIPTION: allowJoinNetwork
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void allowJoinNetwork( uint32_t a_time );
+/*****************************************************************
+* DESCRIPTION: closeAllowJoinNetwork
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void closeAllowJoinNetwork( void );
     /*****************************************************************
 * DESCRIPTION: leaveNetwork
 *     
