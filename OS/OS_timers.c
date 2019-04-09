@@ -256,6 +256,166 @@ E_timerType getTimerType( E_timerEvent a_timerEvent )
 }
 
 /*****************************************************************
+* DESCRIPTION: getTimerIsActive
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+bool getTimerIsActive( E_timerEvent a_timerEvent, E_timerType a_timerType )
+{
+    t_timerList *timerListNode = NULL;
+    
+    if( a_timerType == SINGLE_TIMER )
+    {
+        timerListNode = findTimer(a_timerEvent, false);
+    }
+    else if( a_timerType == RELOAD_TIMER )
+    {
+        timerListNode = findTimer(a_timerEvent, true);
+    }
+    if( timerListNode )
+    {
+        return xTimerIsTimerActive( timerListNode->m_timerHandle );
+    }
+    /* No have the timer */
+    return false;
+}
+/*****************************************************************
+* DESCRIPTION: whichTimerIsActive
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+t_timerActiveList whichTimerIsActive( void )
+{
+    uint8_t count = 0;
+    uint32_t events = 0;
+    t_timerList *timerListNode = timerListHead;
+    t_timerActiveList activeTimer;
+    
+    while( timerListNode )
+    {
+        if( xTimerIsTimerActive(timerListNode->m_timerHandle) )
+        {
+            count++;
+            events |= BV(timerListNode->m_timerEvent);
+        }
+        timerListNode = timerListNode->m_next;
+    }
+    if( count )
+    {
+        activeTimer.m_activeNum = count;
+        activeTimer.m_activeList = (uint8_t *)pvPortMalloc(activeTimer.m_activeNum);
+        if( activeTimer.m_activeList )
+        {
+            uint8_t *tempPoint = activeTimer.m_activeList;
+            for( uint8_t cnt = 0; count; cnt++ )
+            {
+                if( events & BV(cnt) )
+                {
+                    count--;
+                    *tempPoint++ = (E_timerEvent)cnt;
+                }
+            }
+        }
+    }
+    return activeTimer;
+}
+
+/*****************************************************************
+* DESCRIPTION: startTimer
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+E_typeErr startTimer( E_timerEvent a_timerEvent, E_timerType a_timerType )
+{
+    E_typeErr   errStatus = E_ERR;
+    t_timerList *timerListNode;
+    /* Start single timer */
+    if( a_timerType == SINGLE_TIMER || a_timerType == ALL_TYPE_TIMER )
+    {
+        /* Find the timer */
+        timerListNode = findTimer(a_timerEvent, false);
+        if( timerListNode )
+        {
+            /* Start the timer */
+            xTimerStart( timerListNode->m_timerHandle, 10 );
+            errStatus = E_SUCCESS;
+        }
+    }
+    /* Start reload timer */
+    if( a_timerType == RELOAD_TIMER || a_timerType == ALL_TYPE_TIMER )
+    {
+        /* Find the timer */
+        timerListNode = findTimer(a_timerEvent, true);
+        if( timerListNode )
+        {
+            /* Start the timer */
+            xTimerStart( timerListNode->m_timerHandle, 10 );
+            errStatus = E_SUCCESS;
+        }
+    }
+    return errStatus;
+}
+
+/*****************************************************************
+* DESCRIPTION: resetTimer
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+E_typeErr resetTimer( E_timerEvent a_timerEvent, E_timerType a_timerType )
+{
+    E_typeErr   errStatus = E_ERR;
+    t_timerList *timerListNode;
+    /* Reset single timer */
+    if( a_timerType == SINGLE_TIMER || a_timerType == ALL_TYPE_TIMER )
+    {
+        /* Find the timer */
+        timerListNode = findTimer(a_timerEvent, false);
+        if( timerListNode )
+        {
+            /* Reset the timer */
+            xTimerReset( timerListNode->m_timerHandle, 10 );
+            xTimerStart( timerListNode->m_timerHandle, 10 );
+            errStatus = E_SUCCESS;
+        }
+    }
+    /* Reset reload timer */
+    if( a_timerType == RELOAD_TIMER || a_timerType == ALL_TYPE_TIMER )
+    {
+        /* Find the timer */
+        timerListNode = findTimer(a_timerEvent, true);
+        if( timerListNode )
+        {
+            /* Reset the timer */
+            xTimerReset( timerListNode->m_timerHandle, 10 );
+            xTimerStart( timerListNode->m_timerHandle, 10 );
+            errStatus = E_SUCCESS;
+        }
+    }
+    return errStatus;
+}
+
+
+/*****************************************************************
 * DESCRIPTION: stopTimer
 *     
 * INPUTS:

@@ -86,7 +86,6 @@ t_macCsmaParm                macPIB;
  *************************************************************************************************************************/
 static int      getRand( void );
 static void     retransmitCurrentPointNext( void );
-static void     checkTransmitQueue( void );
 static void     addTransmitCommandQueue( t_transmitCommandQueue *transmitCommandNode );
 static void     transmitAck( uint16_t a_shortAddr, uint8_t a_transmitId );
 static void     transmitLeave( t_addrType *a_dstAddr );
@@ -118,7 +117,7 @@ static void     packetJoinResponse( t_joinResponsePacket *a_packet );
 *****************************************************************/
 E_typeErr transmitTx( t_addrType *a_dstAddr, uint8_t a_size, uint8_t *a_data )
 {
-    if( a_size == 0 || a_data == NULL )
+    if( a_size == 0 || a_data == NULL || nwkAttribute.m_nwkStatus == false )
     {
         return E_ERR;
     }
@@ -155,10 +154,7 @@ E_typeErr transmitTx( t_addrType *a_dstAddr, uint8_t a_size, uint8_t *a_data )
         /* Is data message queues empty */
         if( transmitHead == NULL && transmitEnd == NULL )
         {
-            //macPIB.retransmit = 0;
             transmitHead = packetQueue;
-            /* Send notify to lora process */
-            xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
         }
         else
         {
@@ -168,6 +164,8 @@ E_typeErr transmitTx( t_addrType *a_dstAddr, uint8_t a_size, uint8_t *a_data )
         transmitEnd = packetQueue;
         /* Record queue number */
         g_queueCount++;
+        /* Send notify to lora process */
+        xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
 
         return E_SUCCESS;
     }
@@ -238,12 +236,14 @@ E_cmdType transmitRx( t_transmitPacket *a_packet )
             break;
         }
     }
+#ifdef SELF_ORGANIZING_NETWORK
     else if( !nwkAttribute.m_nwkStatus && 
              getNetworkStatus() == NETWORK_JOIN_SCAN && 
              a_packet->m_cmdType == BEACON_ORDER )
     {
         packetBeacon( (t_beaconPacket *)a_packet );
     }
+#endif
     return a_packet->m_cmdType;
 }
 
@@ -342,8 +342,14 @@ void transmitRetransmit( E_transmitType a_transmitType )
             transmitHead = transmitHead->m_next;
             retransmitNode->m_next->m_next = NULL;
         }
+        if( transmitHead == NULL )
+        {
+            transmitEnd = NULL;
+        }
         g_queueCount--;
         g_retransmitQueueCount++;
+        /* Send notify to lora process */
+        xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
     }
     else if( a_transmitType == T_RETRANSMIT )
     {
@@ -462,9 +468,10 @@ void transmitFreeHeadData( void )
         /* Send notify to lora process */
         xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
     }
-    //macPIB.retransmit = 0;
     /* Number of queues minus one */
     g_queueCount--;
+    /* Check if there are any messages that need to be sent */
+    checkTransmitQueue();
     /* Free sended success packet */
     vPortFree(transmitFree);
 }
@@ -495,6 +502,7 @@ void retransmitFreePacket( t_transmitQueue *a_transmitFree )
         }
         /* Free packet */
         vPortFree(retransmitFree);
+        g_retransmitQueueCount--;
     }
     else
     {
@@ -513,6 +521,7 @@ void retransmitFreePacket( t_transmitQueue *a_transmitFree )
             }
             /* Free packet */
             vPortFree(retransmitFree);
+            g_retransmitQueueCount--;
         }
     }
     if( transmitHead || retransmitHead )
@@ -540,7 +549,7 @@ void scanBeaconMessage( TaskHandle_t a_notifyTask )
 }
 
 /*****************************************************************
-* DESCRIPTION: getTransmitPacket
+* DESCRIPTION: getTransmitHeadPacket
 *     
 * INPUTS:
 *     
@@ -549,7 +558,7 @@ void scanBeaconMessage( TaskHandle_t a_notifyTask )
 * NOTE:
 *     null
 *****************************************************************/
-t_transmitQueue * getTransmitPacket( void )
+t_transmitQueue * getTransmitHeadPacket( void )
 {
     return transmitHead;
 }
@@ -589,6 +598,38 @@ uint8_t getAvoidtime( void )
 }
 
 /*****************************************************************
+* DESCRIPTION: checkTransmitQueue
+*     Check if there are any messages that need to be sent.
+* INPUTS:
+*     NULL
+* OUTPUTS:
+*     NULL
+* NOTE:
+*     null
+*****************************************************************/
+void checkTransmitQueue( void )
+{
+    if( transmitCommandHead != NULL )
+    {
+        /* Send command notify to lora process */
+        xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_COMMAND, eSetBits );
+    }
+    else if( transmitHead != NULL || retransmitHead != NULL )
+    {
+        /* Send transmit notify to lora process */
+        xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
+    }
+    else
+    {
+#if configUSE_TICKLESS_IDLE == 1
+        
+#else
+        loraReceiveData();
+#endif
+    }
+}
+
+/*****************************************************************
 * DESCRIPTION: getRand
 *     
 * INPUTS:
@@ -624,30 +665,9 @@ static void retransmitCurrentPointNext( void )
     {
         retransmitCurrent = retransmitHead;
     }
+    checkTransmitQueue();
 }
-/*****************************************************************
-* DESCRIPTION: checkTransmitQueue
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-static void checkTransmitQueue( void )
-{
-    if( transmitCommandHead != NULL || retransmitHead != NULL )
-    {
-        /* Send notify to lora process */
-        xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_COMMAND, eSetBits );
-    }
-    if( transmitHead != NULL )
-    {
-        /* Send notify to lora process */
-        xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
-    }
-}
+
 /*****************************************************************
 * DESCRIPTION: addTransmitCommandQueue
 *     
@@ -953,7 +973,7 @@ static void transmitJoinResponse( E_addrMode a_addrMode, uint8_t *a_dstAddr, boo
 *****************************************************************/
 static void packetAck( t_ackPacket *a_packet )
 {
-    if( a_packet->m_transmitID == transmitHead->m_transmitPacket.m_transmitID )
+    if( transmitHead && a_packet->m_transmitID == transmitHead->m_transmitPacket.m_transmitID )
     {
         stopTimer( TRANSMIT_WAIT_ACK_EVENT, SINGLE_TIMER );
         transmitFreeHeadData();

@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : IWDG.c
-  * Description        : This file provides code for the configuration
-  *                      of the IWDG instances.
+  * File Name          : dma.h
+  * Description        : This file contains all the function prototypes for
+  *                      the dma.c file
   ******************************************************************************
   * This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -46,57 +46,40 @@
   *
   ******************************************************************************
   */
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __dma_H
+#define __dma_H
+
+#ifdef __cplusplus
+ extern "C" {
+#endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "iwdg.h"
+#include "stm32l0xx_hal.h"
+#include "main.h"
 
-/* USER CODE BEGIN 0 */
+/* DMA memory to memory transfer handles -------------------------------------*/
+extern void _Error_Handler(char*, int);
 
-/* USER CODE END 0 */
+/* USER CODE BEGIN Includes */
 
-/* IWDG init function */
-void MX_IWDG_Init(void)
-{
+/* USER CODE END Includes */
 
-  LL_IWDG_Enable(IWDG);
+/* USER CODE BEGIN Private defines */
 
-  LL_IWDG_EnableWriteAccess(IWDG);
+/* USER CODE END Private defines */
 
-  LL_IWDG_SetPrescaler(IWDG, LL_IWDG_PRESCALER_32);
+void MX_DMA_Init(void);
 
-  LL_IWDG_SetWindow(IWDG, 4095);
+/* USER CODE BEGIN Prototypes */
 
-  LL_IWDG_SetReloadCounter(IWDG, 2000);
+/* USER CODE END Prototypes */
 
-  while (LL_IWDG_IsReady(IWDG) != 1)
-  {
-  }
-
-  LL_IWDG_ReloadCounter(IWDG);
-
+#ifdef __cplusplus
 }
+#endif
 
-/* USER CODE BEGIN 1 */
-/*****************************************************************
-* DESCRIPTION: systemFeedDog
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void systemFeedDog( void )
-{
-    LL_IWDG_ReloadCounter(IWDG);
-}
-
-/* USER CODE END 1 */
-
-/**
-  * @}
-  */
+#endif /* __dma_H */
 
 /**
   * @}

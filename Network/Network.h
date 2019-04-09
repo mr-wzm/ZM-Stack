@@ -29,10 +29,21 @@ extern "C"
  *                                                        MACROS                                                         *
  *************************************************************************************************************************/
 /* network task priority. */
-#define NETWORK_TASK_PRIORITY           4
+#define NETWORK_TASK_PRIORITY           5
 /* network task depth. */
 #define NETWORK_TASK_DEPTH              256
 
+    
+    
+    
+/******************* Lora Task Notify Events **********************/
+/**
+ * Min :BV(0)
+ * Max :BV(31)
+ */
+#define NETWORK_NOFITY_INIT_START                           BV(0)
+#define NETWORK_NOFITY_INIT_SUCCESS                         BV(1)
+#define NETWORK_NOFITY_UART_RX_DONE                         BV(2)
 /*************************************************************************************************************************
  *                                                      CONSTANTS                                                        *
  *************************************************************************************************************************/
@@ -43,6 +54,7 @@ extern "C"
 typedef enum
 {
     NETWORK_HOLD,
+    NETWORK_INIT,
     NETWORK_FIND_CHANNEL,
     NETWORK_BUILD,
     NETWORK_COOR,

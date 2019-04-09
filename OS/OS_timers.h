@@ -39,6 +39,10 @@ extern "C"
 /*************************************************************************************************************************
  *                                                      CONSTANTS                                                        *
  *************************************************************************************************************************/
+    
+/*
+ * Timer events.
+ */
 typedef enum
 {
     NO_EVENT = 0U,
@@ -61,14 +65,19 @@ typedef enum
     
 /* Other events */
     SYSTEM_FEED_DOG_EVENT,
+    LOW_POWER_CAD_POLL_EVENT,
     
 }E_timerEvent;
-    
+
+
+/*
+ * Timer type.
+ */
 typedef enum
 {
-    SINGLE_TIMER = 0U,
-    RELOAD_TIMER,
-    ALL_TYPE_TIMER,
+    SINGLE_TIMER = 0U,       //single timer
+    RELOAD_TIMER,            //reload timer
+    ALL_TYPE_TIMER,          //single and reload timer
     NO_TIMER,
 }E_timerType;
 /*************************************************************************************************************************
@@ -83,9 +92,16 @@ typedef struct T_timerList
     E_timerEvent                m_timerEvent;
     uint32_t                    m_time;
     bool                        m_reloadTimer;
+    //bool                        m_timerActive;
     timerCallback_t             m_timerCallback;
     struct T_timerList         *m_next;
 }t_timerList;
+
+typedef struct T_timerActiveList
+{
+    uint8_t                     m_activeNum;
+    uint8_t                    *m_activeList;
+}t_timerActiveList;
 /*************************************************************************************************************************
  *                                                  EXTERNAL VARIABLES                                                   *
  *************************************************************************************************************************/
@@ -151,6 +167,50 @@ E_typeErr startReloadTimer( E_timerEvent a_timerEvent, uint32_t a_time, timerCal
 *     null
 *****************************************************************/
 E_timerType getTimerType( E_timerEvent a_timerEvent );
+/*****************************************************************
+* DESCRIPTION: getTimerIsActive
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+bool getTimerIsActive( E_timerEvent a_timerEvent, E_timerType a_timerType );
+/*****************************************************************
+* DESCRIPTION: whichTimerIsActive
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+t_timerActiveList whichTimerIsActive( void );
+/*****************************************************************
+* DESCRIPTION: startTimer
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+E_typeErr startTimer( E_timerEvent a_timerEvent, E_timerType a_timerType );
+/*****************************************************************
+* DESCRIPTION: resetTimer
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+E_typeErr resetTimer( E_timerEvent a_timerEvent, E_timerType a_timerType );
 /*****************************************************************
 * DESCRIPTION: stopTimer
 *     
