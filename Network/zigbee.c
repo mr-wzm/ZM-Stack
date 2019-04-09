@@ -179,7 +179,10 @@ void uartReceiveDone( void )
     g_uartDmaIndex.m_dataSize = (LORA_BUFFER_SIZE_MAX - __HAL_DMA_GET_COUNTER(&hdma_usart4_rx));
     
     dstAddr.addrMode = pointAddr16Bit;
-    dstAddr.addr.m_dstShortAddr = 0x3ABB;
+    if( nwkAttribute.m_shortAddr == 0x4FA1 )
+        dstAddr.addr.m_dstShortAddr = 0x3ABB;
+    else
+       dstAddr.addr.m_dstShortAddr = 0x4FA1; 
     transmitTx( &dstAddr, g_uartDmaIndex.m_dataSize, g_uartDmaIndex.m_data );
     
     zigbeeUartStartReceive();

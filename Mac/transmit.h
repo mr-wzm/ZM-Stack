@@ -27,13 +27,13 @@ extern "C"
  *                                                        MACROS                                                         *
  *************************************************************************************************************************/    
 /* BE */
-#define MAC_MIN_BE                  4
+#define MAC_MIN_BE                  3
 #define MAC_MAX_BE                  6
 /* NB */
 #define MAC_MIN_NB                  0
 #define MAC_MAX_NB                  5
 /* CW */
-#define MAC_VALUE_CW                2
+#define MAC_VALUE_CW                1//2
 /* Retransmit number */
 #define MAC_RETRANSMIT_NUM          10
 /* Num of broadcast times */
@@ -292,6 +292,17 @@ t_transmitQueue * getRetransmitCurrentPacket( void );
 *     null
 *****************************************************************/
 E_transmitType transmitSendData( void );
+/*****************************************************************
+* DESCRIPTION: setTransmitType
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void setTransmitType( E_transmitType a_type );
 /*****************************************************************
 * DESCRIPTION: transmitRetransmit
 *     

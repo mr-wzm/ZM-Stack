@@ -63,13 +63,7 @@ typedef struct
     bool        m_rts;
     uint16_t    m_linkAddr;
 }t_channelStatus;
-/*
-typedef struct
-{
-    uint8_t     *m_data;
-    uint8_t      m_size;
-}t_dataNotifyPacket;
-*/
+
 
 /*************************************************************************************************************************
  *                                                  EXTERNAL VARIABLES                                                   *

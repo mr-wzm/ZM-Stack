@@ -267,6 +267,22 @@ void loraEnterLowPower( void )
 }
 
 /*****************************************************************
+* DESCRIPTION: setTransmitType
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void setTransmitType( E_transmitType a_type )
+{
+    transmitType = a_type;
+}
+
+
+/*****************************************************************
 * DESCRIPTION: detectionChannel
 *     
 * INPUTS:
@@ -365,7 +381,7 @@ static void loraReceiveDone( uint8_t *a_data, uint16_t a_size )
         xTaskNotify( loraTaskHandle, LORA_NOTIFY_SET_PANID, eSetBits );
     }
 #endif
-
+    
     switch( transmitRx( (t_transmitPacket *)a_data ) )
     {
     case DATA_ORDER:
@@ -375,6 +391,8 @@ static void loraReceiveDone( uint8_t *a_data, uint16_t a_size )
         break;
     }
     
+    checkTransmitQueue();
+    startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE, NULL );
 }
 /*****************************************************************
 * DESCRIPTION: loraReceiveError
@@ -402,7 +420,8 @@ static void loraReceiveError( void )
 *****************************************************************/
 static void loraReceiveTimeout( void )
 {
-    //startSingleTimer( TRANSMIT_NB_TIME_EVENT, getAvoidtime(), getChannelStarus );
+    checkTransmitQueue();
+    startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE, NULL );
 }
 /*****************************************************************
 * DESCRIPTION: loraSendDone
@@ -512,8 +531,7 @@ static void loraCadDone( uint8_t a_detected )
             if( ++macPIB.NB < MAC_MAX_NB )
             {
                 macPIB.CW = MAC_VALUE_CW;
-                macPIB.BE = minValue(++macPIB.BE, MAC_MAX_BE);
-                //startSingleTimer( TRANSMIT_NB_TIME_EVENT, getAvoidtime(), getChannelStarus );
+                macPIB.BE = minValue(macPIB.BE++, MAC_MAX_BE);
             }
             else
             {
@@ -522,7 +540,7 @@ static void loraCadDone( uint8_t a_detected )
             }
         }
         loraReceiveData();
-        startSingleTimer( TRANSMIT_NB_TIME_EVENT, getAvoidtime()+200, getChannelStarus );
+        //startSingleTimer( TRANSMIT_NB_TIME_EVENT, getAvoidtime()+200, getChannelStarus );
         
         break;
     default:

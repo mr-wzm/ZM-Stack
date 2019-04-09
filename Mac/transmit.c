@@ -619,6 +619,14 @@ void checkTransmitQueue( void )
         /* Send transmit notify to lora process */
         xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
     }
+    else
+    {
+#if configUSE_TICKLESS_IDLE == 1
+        
+#else
+        loraReceiveData();
+#endif
+    }
 }
 
 /*****************************************************************
