@@ -34,6 +34,8 @@ extern "C"
 #define MAC_MAX_NB                  5
 /* CW */
 #define MAC_VALUE_CW                1//2
+/* Pre transmission number*/
+#define PRE_TRANSMIT_NUM            2
 /* Retransmit number */
 #define MAC_RETRANSMIT_NUM          10
 /* Num of broadcast times */
@@ -68,6 +70,7 @@ typedef enum
     JOIN_REQUEST_ORDER,
     JOIN_RESPONSE_ORDER,
     ANNONCE_ORDER,
+    ANNONCE_COLLISION_ORDER,
     LEAVE_ORDER,
     //RTS_ORDER,
     //CTS_ORDER,
@@ -152,6 +155,7 @@ typedef struct
     t_addrType      m_dstAddr;
     E_cmdType       m_cmdType;
     t_addrType      m_srcAddr;
+    bool            m_lowPower;
     uint8_t         m_keyNum;
     uint8_t         m_securityKey[SECURITY_KEY_LEN];
 }t_joinRequestPacket;
@@ -179,7 +183,7 @@ typedef struct
     uint16_t        m_panId;
     t_addrType      m_dstAddr;
     E_cmdType       m_cmdType;
-    t_addrType      m_srcAddr;
+    uint16_t        m_srcAddr;
     uint16_t        m_shortAddr;
 }t_annoncePacket;
 

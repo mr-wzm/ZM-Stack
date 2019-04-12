@@ -214,8 +214,7 @@ void loraProcess( void *parm )
         else if( (eventId & LORA_NOTIFY_SET_PANID) == LORA_NOTIFY_SET_PANID )
         {
             setNetworkStatus( NETWORK_BUILD );
-            srand(HAL_GetTick());
-            nwkAttribute.m_panId = (uint16_t)rand();
+            nwkAttribute.m_panId = (uint16_t)generatedRand();
             startSingleTimer( NETWORK_BUILD_EVENT, PAN_ID_BUILD_TIME, networkBuildSuccess );
             eventId ^= (uint32_t)LORA_NOTIFY_SET_PANID;
         }
@@ -312,6 +311,7 @@ static void networkBuildSuccess( void )
 {
     setNetworkStatus( NETWORK_COOR );
     nwkAttribute.m_nwkStatus = true;
+    eepSysNwkAttSave();
 }
 /*****************************************************************
 * DESCRIPTION: getChannelStarus
@@ -359,8 +359,16 @@ static void transmitNoAck( void )
             retransmitFreePacket(getRetransmitCurrentPacket());
             return;
         }
+        transmitRetransmit(transmitType);
     }
-    transmitRetransmit(transmitType);
+#ifdef DEVICE_TYPE_COOR
+    if( LORA_FREQUENCY_MAX == loraGetFrequency() )
+    {
+        loraSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*nwkAttribute.m_channelNum );
+        loraSetPreambleLength(LORA_PREAMBLE_LENGTH);
+        checkTransmitQueue();
+    }
+#endif
 }
 /*****************************************************************
 * DESCRIPTION: loraReceiveDone
@@ -436,14 +444,30 @@ static void loraReceiveTimeout( void )
 static void loraSendDone( void )
 {
     static uint8_t broadcastCount = 0;
-    if( transFlag && macPIB.CW == 0 )
+   // if( transFlag && macPIB.CW == 0 )
+    if( transmitType != NO_TRANS )
     {
         transFlag = false;
         if( transmitType == T_TRANSMIT )
         {
             if( getTransmitHeadPacket()->m_transmitPacket.m_dstAddr.addrMode != broadcastAddr )
             {
-                startSingleTimer( TRANSMIT_WAIT_ACK_EVENT, TRANSMIT_ACK_WAIT_TIME, transmitNoAck );
+                if( ++getTransmitHeadPacket()->m_retransmit < PRE_TRANSMIT_NUM )
+                {
+                    transmitType = transmitSendData();
+                }
+                else
+                {
+                    transmitRetransmit(T_TRANSMIT);
+                    if( getTransmitHeadPacket() )
+                    {
+                        transmitType = transmitSendData();
+                    }
+                    else
+                    {
+                        startSingleTimer( TRANSMIT_WAIT_ACK_EVENT, TRANSMIT_ACK_WAIT_TIME, transmitNoAck );
+                    }
+                }
             }
             else
             {
@@ -506,6 +530,7 @@ static void loraCadDone( uint8_t a_detected )
         
         if( transmitSendCommand() )
         {
+            transmitType = NO_TRANS;
             startSingleTimer( TRANSMIT_NB_TIME_EVENT, getAvoidtime(), getChannelStarus );
         }
         else if( transFlag )

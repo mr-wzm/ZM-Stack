@@ -34,7 +34,7 @@ extern "C"
 #define LORA_FREQUENCY_MAX              860000000
 #define LORA_FREQUENCY_STEP              20000000
 /* Channel max number */
-#define LORA_CHANNEL_MAX                6
+#define LORA_CHANNEL_MAX                5
      
 /* Lora timeout value(ms) */
 #define LORA_TIMEOUT_VALUE              200
@@ -143,7 +143,7 @@ int8_t getLoraSnr( void );
 *****************************************************************/
 double getLoraRssi( void );
 /*****************************************************************
-* DESCRIPTION: loRaSetFrequency
+* DESCRIPTION: loraSetFrequency
 *     
 * INPUTS:
 *     
@@ -152,9 +152,9 @@ double getLoraRssi( void );
 * NOTE:
 *     null
 *****************************************************************/
-E_typeErr loRaSetFrequency( uint32_t a_freq );
+E_typeErr loraSetFrequency( uint32_t a_freq );
 /*****************************************************************
-* DESCRIPTION: loRaGetFrequency
+* DESCRIPTION: loraGetFrequency
 *     
 * INPUTS:
 *     null
@@ -163,7 +163,29 @@ E_typeErr loRaSetFrequency( uint32_t a_freq );
 * NOTE:
 *     null
 *****************************************************************/
-uint32_t loRaGetFrequency( void );
+uint32_t loraGetFrequency( void );
+/*****************************************************************
+* DESCRIPTION: loraSetPreambleLength
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void loraSetPreambleLength( uint16_t a_value );
+/*****************************************************************
+* DESCRIPTION: loraGetPreambleLength
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+uint16_t loraGetPreambleLength( void );
 /*****************************************************************
 * DESCRIPTION: loraEnterStandby
 *     

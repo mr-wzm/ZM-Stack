@@ -148,6 +148,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     __HAL_UART_CLEAR_IT(&huart4, UART_FLAG_IDLE);
     __HAL_DMA_DISABLE_IT(&hdma_usart4_rx, DMA_IT_TC);
     __HAL_DMA_DISABLE_IT(&hdma_usart4_rx, DMA_IT_HT);
+    HAL_UART_MspDeInit(&huart4);
   /* USER CODE END USART4_MspInit 1 */
   }
 }

@@ -140,6 +140,8 @@ void loraDriverInit( void )
     Radio = RadioDriverInit( );
     
     Radio->Init( );
+    
+    loraSetPreambleLength(LORA_PREAMBLE_LENGTH);
 }
 
 
@@ -210,7 +212,7 @@ double getLoraRssi( void )
 }
 
 /*****************************************************************
-* DESCRIPTION: loRaSetFrequency
+* DESCRIPTION: loraSetFrequency
 *     
 * INPUTS:
 *     
@@ -219,7 +221,7 @@ double getLoraRssi( void )
 * NOTE:
 *     null
 *****************************************************************/
-E_typeErr loRaSetFrequency( uint32_t a_freq )
+E_typeErr loraSetFrequency( uint32_t a_freq )
 {
     uint32_t freq;
     
@@ -237,7 +239,7 @@ E_typeErr loRaSetFrequency( uint32_t a_freq )
 }
 
 /*****************************************************************
-* DESCRIPTION: loRaGetFrequency
+* DESCRIPTION: loraGetFrequency
 *     
 * INPUTS:
 *     null
@@ -246,9 +248,41 @@ E_typeErr loRaSetFrequency( uint32_t a_freq )
 * NOTE:
 *     null
 *****************************************************************/
-uint32_t loRaGetFrequency( void )
+uint32_t loraGetFrequency( void )
 {
     return SX1276LoRaGetRFFrequency();
+}
+
+/*****************************************************************
+* DESCRIPTION: loraSetPreambleLength
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void loraSetPreambleLength( uint16_t a_value )
+{
+    loraEnterStandby();
+    
+    SX1276LoRaSetPreambleLength( a_value );
+}
+
+/*****************************************************************
+* DESCRIPTION: loraGetPreambleLength
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+uint16_t loraGetPreambleLength( void )
+{
+    return SX1276LoRaGetPreambleLength();
 }
 
 /*****************************************************************
@@ -330,7 +364,7 @@ E_typeErr loraSendData( uint8_t *a_data, uint8_t a_size )
     /* Set radio status to tx */
     g_radioStatus = RFLR_STATE_TX_RUNNING;
     /* Open send timer */
-    if( startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE+100, NULL ) == E_ERR )
+    if( startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE+loraGetPreambleLength(), NULL ) == E_ERR )
     {
         loraEnterStandby();
         return E_ERR;
