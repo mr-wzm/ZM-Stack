@@ -64,6 +64,7 @@ extern "C"
 /* Low power mode preamble length */
 #define LORA_PREAMBLE_LENGTH_LP     1000
 
+
 /*
  * ULONG_MAX
  */

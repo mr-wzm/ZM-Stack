@@ -87,6 +87,8 @@ void osTaskInit( void )
     startReloadTimer( SYSTEM_FEED_DOG_EVENT, FEED_DOG_TIME, systemFeedDog );
     taskEXIT_CRITICAL();            //Exit the critical area
 }     
-          
+
+
+
 
 /****************************************************** END OF FILE ******************************************************/

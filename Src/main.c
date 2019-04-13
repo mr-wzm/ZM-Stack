@@ -127,11 +127,11 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   loraInit();
-
+  
   networkInit();
   
   osTimerInit();
-
+  
   osTaskInit();
   
   /* USER CODE END 2 */

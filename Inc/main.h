@@ -67,7 +67,7 @@
 #include "stm32l0xx_ll_gpio.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "loraConfig.h"
 /* USER CODE END Includes */
 
 /* Private define ------------------------------------------------------------*/

@@ -82,7 +82,8 @@
  * See http://www.freertos.org/a00110.html.
  *----------------------------------------------------------*/
 
-/* USER CODE BEGIN Includes */   	      
+/* USER CODE BEGIN Includes */
+#include "loraConfigLP.h"
 /* Section where include file can be added */
 /* USER CODE END Includes */ 
 
