@@ -45,6 +45,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern RTC_HandleTypeDef hrtc;
 extern DMA_HandleTypeDef hdma_usart4_rx;
 extern DMA_HandleTypeDef hdma_usart4_tx;
 extern UART_HandleTypeDef huart4;
@@ -107,6 +108,30 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32l0xx.s).                    */
 /******************************************************************************/
+
+/**
+* @brief This function handles RTC global interrupt through EXTI lines 17, 19 and 20 and LSE CSS interrupt through EXTI line 19.
+*/
+void RTC_IRQHandler(void)
+{
+  /* USER CODE BEGIN RTC_IRQn 0 */
+    if(__HAL_RTC_WAKEUPTIMER_GET_FLAG(&hrtc, RTC_FLAG_WUTF) != RESET)
+    {
+        __HAL_RTC_WAKEUPTIMER_CLEAR_FLAG(&hrtc, RTC_FLAG_WUTF);
+    }
+    if( __HAL_RTC_WAKEUPTIMER_EXTI_GET_FLAG() )
+    {
+        __HAL_RTC_WAKEUPTIMER_EXTI_CLEAR_FLAG();
+#include "gpio.h"
+        TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
+        //HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+    }
+  /* USER CODE END RTC_IRQn 0 */
+  HAL_RTC_AlarmIRQHandler(&hrtc);
+  /* USER CODE BEGIN RTC_IRQn 1 */
+
+  /* USER CODE END RTC_IRQn 1 */
+}
 
 /**
 * @brief This function handles EXTI line 4 to 15 interrupts.
