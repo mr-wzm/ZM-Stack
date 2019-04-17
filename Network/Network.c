@@ -125,14 +125,14 @@ void networkProcess( void *parm )
    uint32_t eventId = 0;
    
    //networConfigkStart();
-   
+
    zigbeeUartInit();
 #ifdef DEVICE_TYPE_COOR
    //t_addrType dstaddr;
    //dstaddr.addrMode = broadcastAddr;
    //dstaddr.addr.m_dstShortAddr = 0x51CF;
    //loraDeleteDevice( &dstaddr );
-   //allowJoinNetwork(120000);
+   allowJoinNetwork(120000);
 #endif
     while(1)
     {

@@ -38,8 +38,10 @@
 #define portNVIC_SYSTICK_LOAD			( * ( ( volatile uint32_t * ) 0xe000e014 ) )
 #define portNVIC_SYSTICK_CURRENT_VALUE	        ( * ( ( volatile uint32_t * ) 0xe000e018 ) )
 #define portNVIC_SYSTICK_ENABLE		    0x00000001
-
 #define portMISSED_COUNTS_FACTOR			( 45UL )
+
+#define SYSTEM_CLOCK_HZ                 32768
+#define SYSTEM_WAKEUP_TIME_BASIC        SYSTEM_CLOCK_HZ/16/1000
 
 
 #define ulTimerCountsForOneTick         configSYSTICK_CLOCK_HZ / configTICK_RATE_HZ
@@ -63,7 +65,7 @@ static TickType_t g_xModifiableIdleTime;
 /*************************************************************************************************************************
  *                                                  EXTERNAL VARIABLES                                                   *
  *************************************************************************************************************************/
- 
+bool rtcWakeUpActive = false;
 /*************************************************************************************************************************
  *                                                    LOCAL VARIABLES                                                    *
  *************************************************************************************************************************/
@@ -89,23 +91,9 @@ extern void SystemClock_Config(void);
 * NOTE:
 *     null
 *****************************************************************/
-volatile uint32_t sleepTimer = 0;
-void sysEnterLowPower( uint32_t *a_xModifiableIdleTime)
+void sysEnterLowPower( uint32_t *a_xModifiableIdleTime )
 {
 #ifdef SYSTEM_LOW_POWER_STOP
-    /* Disable the write protection for RTC registers */
-    __HAL_RTC_WRITEPROTECTION_DISABLE(&hrtc);
-    __HAL_RTC_WAKEUPTIMER_ENABLE(&hrtc);
-    __HAL_RTC_ALARMA_DISABLE(&hrtc);
-    __HAL_RTC_ALARM_DISABLE_IT(&hrtc, RTC_FLAG_ALRAF);
-    __HAL_RTC_WAKEUPTIMER_EXTI_ENABLE_IT();
-    __HAL_RTC_WAKEUPTIMER_EXTI_ENABLE_RISING_FALLING_EDGE();
-    
-    HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 4000, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
-    /* Enable the write protection for RTC registers */
-    __HAL_RTC_WRITEPROTECTION_ENABLE(&hrtc);
-    sleepTimer = HAL_RTCEx_GetWakeUpTimer(&hrtc);
-
     *a_xModifiableIdleTime = 0;
     HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_SLEEPENTRY_WFI);
 #else
@@ -125,9 +113,6 @@ void sysEnterLowPower( uint32_t *a_xModifiableIdleTime)
 *****************************************************************/
 void sysExitLowPower( uint32_t *a_xExpectedIdleTime )
 {
-#include "gpio.h"
-    
-    //TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
 #ifdef SYSTEM_LOW_POWER_STOP
     SystemClock_Config();
     g_xModifiableIdleTime = *a_xExpectedIdleTime;
@@ -152,7 +137,7 @@ void sysExitLowPower( uint32_t *a_xExpectedIdleTime )
 *****************************************************************/
 void vPortSuppressTicksAndSleep( TickType_t xExpectedIdleTime )
 {
-	uint32_t ulReloadValue, ulCompleteTickPeriods, ulCompletedSysTickDecrements, ulSysTickCTRL;
+	uint32_t ulReloadValue, ulCompleteTickPeriods, ulSysTickCTRL;
 	TickType_t xModifiableIdleTime;
     
     /* Stop the SysTick momentarily.  The time the SysTick is stopped for
@@ -195,15 +180,17 @@ void vPortSuppressTicksAndSleep( TickType_t xExpectedIdleTime )
     }
     else
     {
-        /* Set the new reload value. */
-        //portNVIC_SYSTICK_LOAD = ulReloadValue;
-        
-        /* Clear the SysTick count flag and set the count value back to
-        zero. */
-        //portNVIC_SYSTICK_CURRENT_VALUE = 0UL;
-        
-        /* Restart SysTick. */
-        //portNVIC_SYSTICK_CTRL |= portNVIC_SYSTICK_ENABLE;
+        /* Disable the write protection for RTC registers */
+        __HAL_RTC_WRITEPROTECTION_DISABLE(&hrtc);
+        __HAL_RTC_WAKEUPTIMER_ENABLE(&hrtc);
+        __HAL_RTC_ALARMA_DISABLE(&hrtc);
+        __HAL_RTC_ALARM_DISABLE_IT(&hrtc, RTC_FLAG_ALRAF);
+        __HAL_RTC_WAKEUPTIMER_EXTI_ENABLE_IT();
+        __HAL_RTC_WAKEUPTIMER_EXTI_ENABLE_RISING_FALLING_EDGE();
+        /* Load next wake up time */
+        HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, ulReloadValue*1, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
+        /* Enable the write protection for RTC registers */
+        __HAL_RTC_WRITEPROTECTION_ENABLE(&hrtc);
         
         /* Sleep until something happens.  configPRE_SLEEP_PROCESSING() can
         set its parameter to 0 to indicate that its implementation contains
@@ -226,15 +213,15 @@ void vPortSuppressTicksAndSleep( TickType_t xExpectedIdleTime )
         kernel with respect to calendar time. */
         ulSysTickCTRL = portNVIC_SYSTICK_CTRL;
         portNVIC_SYSTICK_CTRL = ( ulSysTickCTRL & ~portNVIC_SYSTICK_ENABLE );
-        
         /* Re-enable interrupts - see comments above __disable_interrupt()
         call above. */
         __enable_interrupt();
         
-        if( __HAL_RTC_WAKEUPTIMER_EXTI_GET_FLAG() != 0 )
+        if( rtcWakeUpActive == true || __HAL_RTC_WAKEUPTIMER_EXTI_GET_FLAG() != 0 )
         {
             uint32_t ulCalculatedLoadValue;
             
+            rtcWakeUpActive = false;
             /* The tick interrupt has already executed, and the SysTick
             count reloaded with ulReloadValue.  Reset the
             portNVIC_SYSTICK_LOAD_REG with whatever remains of this tick
@@ -270,16 +257,17 @@ void vPortSuppressTicksAndSleep( TickType_t xExpectedIdleTime )
             /*Reset the
             portNVIC_SYSTICK_LOAD_REG with whatever remains of this tick
             period. */
-            ulCalculatedLoadValue = ulTimerCountsForOneTick - 1UL;
+            portNVIC_SYSTICK_LOAD = ulTimerCountsForOneTick - 1UL;
             /* Clear the SysTick count flag and set the count value back to
             zero. */
             portNVIC_SYSTICK_CURRENT_VALUE = 0UL;
             /* Restart SysTick. */
             portNVIC_SYSTICK_CTRL |= portNVIC_SYSTICK_ENABLE;
             
-            
-           
+            rtcWakeUpActive = true;
         }
+        /* Start systick */
+        SysTick_Config( SystemCoreClock / 1000 );
     }
 }
 

@@ -135,7 +135,7 @@ void HAL_RTC_MspInit(RTC_HandleTypeDef* rtcHandle)
     HAL_NVIC_SetPriority(RTC_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(RTC_IRQn);
   /* USER CODE BEGIN RTC_MspInit 1 */
-    
+
   /* USER CODE END RTC_MspInit 1 */
   }
 }

@@ -27,7 +27,7 @@ extern "C"
 {
 #endif
 
-
+#if configUSE_TICKLESS_IDLE != 0
 /*************************************************************************************************************************
  *                                                        MACROS                                                         *
  *************************************************************************************************************************/
@@ -47,6 +47,7 @@ extern "C"
 #if defined(__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__)
 extern void sysEnterLowPower( uint32_t *a_xModifiableIdleTime);
 extern void sysExitLowPower( uint32_t *a_xExpectedIdleTime );
+#endif
 #endif
 
 #ifdef __cplusplus

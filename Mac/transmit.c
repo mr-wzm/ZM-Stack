@@ -634,7 +634,7 @@ void checkTransmitQueue( void )
     else
     {
 #if configUSE_TICKLESS_IDLE == 1
-        
+        loraEnterLowPower();
 #else
         loraReceiveData();
 #endif

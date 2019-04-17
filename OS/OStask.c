@@ -22,6 +22,8 @@
  *************************************************************************************************************************/
 #include "loraConfig.h"
 #include "iwdg.h"
+#include "rtc.h"
+#include "gpio.h"
 #include "Network.h"
 #include "lora.h"
 #include "OS_timers.h"
@@ -61,6 +63,34 @@
 /*************************************************************************************************************************
  *                                                    LOCAL FUNCTIONS                                                    *
  *************************************************************************************************************************/
+
+/*****************************************************************
+* DESCRIPTION: halDriverInit
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void halDriverInit( void )
+{
+    /* Power off rtc if the device is not low power device */
+#ifndef SYSTEM_LOW_POWER_STOP
+    HAL_RTC_MspDeInit(&hrtc);
+#else
+    /* Disable the write protection for RTC registers */
+    __HAL_RTC_WRITEPROTECTION_DISABLE(&hrtc);
+    __HAL_RTC_ALARMA_DISABLE(&hrtc);
+    __HAL_RTC_ALARM_DISABLE_IT(&hrtc, RTC_FLAG_ALRAF);
+    /* Enable the write protection for RTC registers */
+    __HAL_RTC_WRITEPROTECTION_ENABLE(&hrtc);
+#endif
+    /* Power off led */
+    SET_GPIO_PIN_LOW(LED_GPIO_Port, LED_Pin);
+}
+
 
 /*****************************************************************
 * DESCRIPTION: osTaskInit

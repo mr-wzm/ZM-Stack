@@ -243,7 +243,7 @@ void loraEnterLowPower( void )
 #if configUSE_TICKLESS_IDLE == 1
     t_timerActiveList timerList = whichTimerIsActive();
     /* No timer task is working */
-    if( timerList.m_activeNum > 1 )
+    if( timerList.m_activeNum < 3 && timerList.m_activeNum )
     {
         for( int count = timerList.m_activeNum; count > 0; count-- )
         {
@@ -253,15 +253,15 @@ void loraEnterLowPower( void )
             }
             stopTimer( (E_timerEvent)timerList.m_activeList[count], ALL_TYPE_TIMER );
         }
+        loraEnterSleep();
+        if( nwkAttribute.m_nwkStatus )
+        {
+            systemFeedDog();
+            resetTimer( SYSTEM_FEED_DOG_EVENT, RELOAD_TIMER );  //Sync feed dog timer.
+            startSingleTimer( LOW_POWER_CAD_POLL_EVENT, CAD_POLL_TIME, getChannelStarus );
+        }
     }
     vPortFree(timerList.m_activeList);
-    loraEnterSleep();
-    if( nwkAttribute.m_nwkStatus )
-    {
-        systemFeedDog();
-        resetTimer( SYSTEM_FEED_DOG_EVENT, RELOAD_TIMER );  //Sync feed dog timer.
-        startSingleTimer( LOW_POWER_CAD_POLL_EVENT, CAD_POLL_TIME, getChannelStarus );
-    }
 #endif
 }
 
@@ -400,7 +400,9 @@ static void loraReceiveDone( uint8_t *a_data, uint16_t a_size )
     }
     
     checkTransmitQueue();
+#if configUSE_TICKLESS_IDLE == 0
     startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE, NULL );
+#endif
 }
 /*****************************************************************
 * DESCRIPTION: loraReceiveError
@@ -429,7 +431,9 @@ static void loraReceiveError( void )
 static void loraReceiveTimeout( void )
 {
     checkTransmitQueue();
+#if configUSE_TICKLESS_IDLE == 0
     startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE, NULL );
+#endif
 }
 /*****************************************************************
 * DESCRIPTION: loraSendDone

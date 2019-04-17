@@ -37,11 +37,22 @@
 #include "cmsis_os.h"
 
 /* USER CODE BEGIN 0 */
+/*************************************************************************************************************************
+ *                                                       INCLUDES                                                        *
+ *************************************************************************************************************************/
 #include "loraConfig.h"
 #include "network.h"
 #include "OStask.h"
 #include "zigbee.h"
 #include "lora.h"
+/*************************************************************************************************************************
+ *                                                  EXTERNAL VARIABLES                                                   *
+ *************************************************************************************************************************/
+#ifdef SYSTEM_LOW_POWER_STOP
+extern bool rtcWakeUpActive;
+
+extern void sysCompleteTick( void );
+#endif
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -122,9 +133,19 @@ void RTC_IRQHandler(void)
     if( __HAL_RTC_WAKEUPTIMER_EXTI_GET_FLAG() )
     {
         __HAL_RTC_WAKEUPTIMER_EXTI_CLEAR_FLAG();
-#include "gpio.h"
-        TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
-        //HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+
+        HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+#ifdef SYSTEM_LOW_POWER_STOP
+        if(rtcWakeUpActive == true)
+        {
+            rtcWakeUpActive = false;
+            sysCompleteTick();
+        }
+        else
+        {
+            rtcWakeUpActive = true;
+        }
+#endif
     }
   /* USER CODE END RTC_IRQn 0 */
   HAL_RTC_AlarmIRQHandler(&hrtc);
