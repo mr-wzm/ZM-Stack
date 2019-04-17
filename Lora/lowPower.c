@@ -25,6 +25,9 @@
  *************************************************************************************************************************/
 #include "loraConfig.h"
 #include "loraConfigLP.h"
+#include "OS_timers.h"
+#include "attribute.h"
+#include "lora.h"
 #include "rtc.h"
 /*************************************************************************************************************************
  *                                                        MACROS                                                         *
@@ -94,6 +97,12 @@ extern void SystemClock_Config(void);
 void sysEnterLowPower( uint32_t *a_xModifiableIdleTime )
 {
 #ifdef SYSTEM_LOW_POWER_STOP
+    __HAL_RCC_DMA1_CLK_DISABLE();
+    LL_IOP_GRP1_DisableClock(LL_IOP_GRP1_PERIPH_GPIOC);
+    LL_IOP_GRP1_DisableClock(LL_IOP_GRP1_PERIPH_GPIOA);
+    LL_IOP_GRP1_DisableClock(LL_IOP_GRP1_PERIPH_GPIOB);
+    LL_APB2_GRP1_DisableClock(LL_APB2_GRP1_PERIPH_SPI1);
+    __HAL_RCC_USART4_CLK_DISABLE();
     *a_xModifiableIdleTime = 0;
     HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_SLEEPENTRY_WFI);
 #else
@@ -115,6 +124,16 @@ void sysExitLowPower( uint32_t *a_xExpectedIdleTime )
 {
 #ifdef SYSTEM_LOW_POWER_STOP
     SystemClock_Config();
+    /* DMA controller clock enable */
+    __HAL_RCC_DMA1_CLK_ENABLE();
+    /* GPIO Ports Clock Enable */
+    LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOC);
+    LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOA);
+    LL_IOP_GRP1_EnableClock(LL_IOP_GRP1_PERIPH_GPIOB);
+    /* Peripheral clock enable */
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SPI1);
+    /* USART4 clock enable */
+    __HAL_RCC_USART4_CLK_ENABLE();
     g_xModifiableIdleTime = *a_xExpectedIdleTime;
 #else
     (void)*a_xExpectedIdleTime;
@@ -140,6 +159,10 @@ void vPortSuppressTicksAndSleep( TickType_t xExpectedIdleTime )
 	uint32_t ulReloadValue, ulCompleteTickPeriods, ulSysTickCTRL;
 	TickType_t xModifiableIdleTime;
     
+    //if( nwkAttribute.m_nwkStatus && getTimerIsActive(LOW_POWER_CAD_POLL_EVENT, SINGLE_TIMER) == false )
+    //{
+    //    loraEnterLowPower();
+    //}
     /* Stop the SysTick momentarily.  The time the SysTick is stopped for
     is accounted for as best it can be, but using the tickless mode will
     inevitably result in some tiny drift of the time maintained by the

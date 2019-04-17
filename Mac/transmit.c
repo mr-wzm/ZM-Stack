@@ -204,16 +204,18 @@ E_cmdType transmitRx( t_transmitPacket *a_packet )
            return ERR_ORDER;
         }
         
-        TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
+        //TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
         /* The packet type */
         switch( a_packet->m_cmdType )
         {
         case DATA_ORDER:
             dataDecode( a_packet->m_keyNum, a_packet->m_data, a_packet->m_size );
+#ifndef SYSTEM_LOW_POWER_STOP
             if( a_packet->m_dstAddr.addrMode != broadcastAddr )
             {
                 transmitAck( a_packet->m_srcAddr, a_packet->m_transmitID );
             }
+#endif
             break;
         case ACK_ORDER:
             packetAck( (t_ackPacket *)a_packet );

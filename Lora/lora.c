@@ -143,7 +143,8 @@ void loraProcess( void *parm )
     uint32_t eventId;
     
 #if configUSE_TICKLESS_IDLE == 1
-    loraEnterSleep();
+    //loraEnterSleep();
+    loraEnterLowPower();
 #else
     if(nwkAttribute.m_nwkStatus == true)
     {
@@ -430,6 +431,7 @@ static void loraReceiveError( void )
 *****************************************************************/
 static void loraReceiveTimeout( void )
 {
+    //TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
     checkTransmitQueue();
 #if configUSE_TICKLESS_IDLE == 0
     startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE, NULL );
@@ -528,6 +530,7 @@ static void loraSendTimeout( void )
 *****************************************************************/
 static void loraCadDone( uint8_t a_detected )
 {
+    TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
     switch( a_detected )
     {
     case RF_CHANNEL_EMPTY:
@@ -550,8 +553,11 @@ static void loraCadDone( uint8_t a_detected )
         }
         else
         {
+#if configUSE_TICKLESS_IDLE == 0
             loraReceiveData();
+#else
             checkTransmitQueue();
+#endif
         }
         break;
     case RF_CHANNEL_ACTIVITY_DETECTED:

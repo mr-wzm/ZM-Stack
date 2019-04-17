@@ -132,7 +132,7 @@ void networkProcess( void *parm )
    //dstaddr.addrMode = broadcastAddr;
    //dstaddr.addr.m_dstShortAddr = 0x51CF;
    //loraDeleteDevice( &dstaddr );
-   allowJoinNetwork(120000);
+   //allowJoinNetwork(120000);
 #endif
     while(1)
     {

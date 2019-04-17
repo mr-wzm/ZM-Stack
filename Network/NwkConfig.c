@@ -300,7 +300,7 @@ void allowJoinNetwork( uint32_t a_time )
 {
     if( getNetworkStatus() != NETWORK_COOR || a_time == 0 )
     {
-        //return;
+        return;
     }
     /* Notify task send beacon packet start */
     xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_BEACON, eSetBits );

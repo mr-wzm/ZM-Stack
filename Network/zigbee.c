@@ -180,7 +180,7 @@ void uartReceiveDone( void )
     
     dstAddr.addrMode = pointAddr16Bit;
     if( nwkAttribute.m_shortAddr == 0x0000 )
-        dstAddr.addr.m_dstShortAddr = 0xBD49;
+        dstAddr.addr.m_dstShortAddr = 0xC473;
     else
        dstAddr.addr.m_dstShortAddr = 0x0000; 
     transmitTx( &dstAddr, g_uartDmaIndex.m_dataSize, g_uartDmaIndex.m_data );

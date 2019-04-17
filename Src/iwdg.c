@@ -92,12 +92,12 @@ void systemFeedDog( void )
 #include "gpio.h"
 #include "loraConfig.h"
 #include "NwkConfig.h"
-    static uint8_t count = 0;
-    if( (++count%30) == 0)
-    {
-        allowJoinNetwork(12000);
-    }
-    TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
+    //static uint8_t count = 0;
+    //if( (++count%30) == 0)
+    //{
+    //    allowJoinNetwork(12000);
+    //}
+    //TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
     LL_IWDG_ReloadCounter(IWDG);
 }
 
