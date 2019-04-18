@@ -25,9 +25,6 @@
  *************************************************************************************************************************/
 #include "loraConfig.h"
 #include "loraConfigLP.h"
-#include "OS_timers.h"
-#include "attribute.h"
-#include "lora.h"
 #include "rtc.h"
 /*************************************************************************************************************************
  *                                                        MACROS                                                         *
@@ -134,6 +131,7 @@ void sysExitLowPower( uint32_t *a_xExpectedIdleTime )
     LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SPI1);
     /* USART4 clock enable */
     __HAL_RCC_USART4_CLK_ENABLE();
+    
     g_xModifiableIdleTime = *a_xExpectedIdleTime;
 #else
     (void)*a_xExpectedIdleTime;
@@ -159,10 +157,6 @@ void vPortSuppressTicksAndSleep( TickType_t xExpectedIdleTime )
 	uint32_t ulReloadValue, ulCompleteTickPeriods, ulSysTickCTRL;
 	TickType_t xModifiableIdleTime;
     
-    //if( nwkAttribute.m_nwkStatus && getTimerIsActive(LOW_POWER_CAD_POLL_EVENT, SINGLE_TIMER) == false )
-    //{
-    //    loraEnterLowPower();
-    //}
     /* Stop the SysTick momentarily.  The time the SysTick is stopped for
     is accounted for as best it can be, but using the tickless mode will
     inevitably result in some tiny drift of the time maintained by the
@@ -211,7 +205,7 @@ void vPortSuppressTicksAndSleep( TickType_t xExpectedIdleTime )
         __HAL_RTC_WAKEUPTIMER_EXTI_ENABLE_IT();
         __HAL_RTC_WAKEUPTIMER_EXTI_ENABLE_RISING_FALLING_EDGE();
         /* Load next wake up time */
-        HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, ulReloadValue*1, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
+        HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, ulReloadValue*2, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
         /* Enable the write protection for RTC registers */
         __HAL_RTC_WRITEPROTECTION_ENABLE(&hrtc);
         

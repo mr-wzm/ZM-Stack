@@ -88,7 +88,7 @@ void halDriverInit( void )
     __HAL_RTC_WRITEPROTECTION_ENABLE(&hrtc);
 #endif
     /* Power off led */
-    SET_GPIO_PIN_LOW(LED_GPIO_Port, LED_Pin);
+    //SET_GPIO_PIN_LOW(LED_GPIO_Port, LED_Pin);
 }
 
 

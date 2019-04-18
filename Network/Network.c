@@ -124,7 +124,7 @@ void networkProcess( void *parm )
 {
    uint32_t eventId = 0;
    
-   //networConfigkStart();
+   networConfigkStart();
 
    zigbeeUartInit();
 #ifdef DEVICE_TYPE_COOR

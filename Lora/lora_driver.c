@@ -459,7 +459,7 @@ E_typeErr loraReceiveData( void )
     g_radioStatus = RFLR_STATE_RX_RUNNING;
     /* Open receive timer */
 #ifdef SYSTEM_LOW_POWER_STOP
-    if( startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE+1000, NULL ) == E_ERR )
+    if( startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE+loraGetPreambleLength(), NULL ) == E_ERR )
 #else
     if( startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE, NULL ) == E_ERR )
 #endif

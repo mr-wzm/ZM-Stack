@@ -58,6 +58,7 @@
  *                                                   GLOBAL VARIABLES                                                    *
  *************************************************************************************************************************/
 static bool             transFlag = false;
+static uint8_t          g_loraErrCount = 0;
 static TaskHandle_t     notifyTask = NULL;
 static E_transmitType   transmitType = NO_TRANS;
 /*************************************************************************************************************************
@@ -326,6 +327,10 @@ static void networkBuildSuccess( void )
 *****************************************************************/
 static void getChannelStarus( void )
 {
+#ifdef SYSTEM_LOW_POWER_STOP
+    //if(nwkAttribute.m_nwkStatus)
+    //TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
+#endif
     if( getLoraStatus() == RFLR_STATE_RX_RUNNING )
     {
         loraEnterStandby();
@@ -417,7 +422,7 @@ static void loraReceiveDone( uint8_t *a_data, uint16_t a_size )
 *****************************************************************/
 static void loraReceiveError( void )
 {
-    //startSingleTimer( TRANSMIT_NB_TIME_EVENT, getAvoidtime(), getChannelStarus );
+    
 }
 /*****************************************************************
 * DESCRIPTION: loraReceiveTimeout
@@ -431,7 +436,6 @@ static void loraReceiveError( void )
 *****************************************************************/
 static void loraReceiveTimeout( void )
 {
-    //TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
     checkTransmitQueue();
 #if configUSE_TICKLESS_IDLE == 0
     startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE, NULL );
@@ -458,6 +462,13 @@ static void loraSendDone( void )
         {
             if( getTransmitHeadPacket()->m_transmitPacket.m_dstAddr.addrMode != broadcastAddr )
             {
+                if( LORA_FREQUENCY_MAX == loraGetFrequency() )
+                {
+                    loraSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*nwkAttribute.m_channelNum );
+                    loraSetPreambleLength(LORA_PREAMBLE_LENGTH);
+                    transmitFreeHeadData();
+                    goto SEND_NEXT;
+                }
                 if( ++getTransmitHeadPacket()->m_retransmit < PRE_TRANSMIT_NUM )
                 {
                     transmitType = transmitSendData();
@@ -465,6 +476,7 @@ static void loraSendDone( void )
                 else
                 {
                     transmitRetransmit(T_TRANSMIT);
+                SEND_NEXT:
                     if( getTransmitHeadPacket() )
                     {
                         transmitType = transmitSendData();
@@ -530,7 +542,8 @@ static void loraSendTimeout( void )
 *****************************************************************/
 static void loraCadDone( uint8_t a_detected )
 {
-    TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
+    g_loraErrCount = 0;
+    
     switch( a_detected )
     {
     case RF_CHANNEL_EMPTY:
@@ -575,7 +588,6 @@ static void loraCadDone( uint8_t a_detected )
             }
         }
         loraReceiveData();
-        //startSingleTimer( TRANSMIT_NB_TIME_EVENT, getAvoidtime()+200, getChannelStarus );
         
         break;
     default:
@@ -601,6 +613,10 @@ static void loraCadDone( uint8_t a_detected )
 *****************************************************************/
 static void loraCadTimeout( void )
 {
+    if( ++g_loraErrCount > 5 )
+    {
+        resetSystem();
+    }
     startSingleTimer( TRANSMIT_NB_TIME_EVENT, getAvoidtime(), getChannelStarus );
 }
 

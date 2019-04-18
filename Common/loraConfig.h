@@ -43,6 +43,8 @@ extern "C"
 #if defined(DEVICE_TYPE_COOR) && defined(DEVICE_TYPE_DEVICE)
 #error "DEVICE_TYPE_COOR and DEVICE_TYPE_DEVICE can only choose one!"
 #endif
+    
+#define __FUNCTION_POSSIBLE_UNUSED    __attribute__ ((unused))
 
 #ifndef BV
 #define BV(x)       (1 << (x))

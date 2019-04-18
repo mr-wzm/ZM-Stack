@@ -86,7 +86,7 @@ t_macCsmaParm                macPIB;
  *************************************************************************************************************************/
 static void     retransmitCurrentPointNext( void );
 static void     addTransmitCommandQueue( t_transmitCommandQueue *transmitCommandNode );
-static void     transmitAck( uint16_t a_shortAddr, uint8_t a_transmitId );
+static void     transmitAck( uint16_t a_shortAddr, uint8_t a_transmitId ) __FUNCTION_POSSIBLE_UNUSED;
 static void     transmitLeave( t_addrType *a_dstAddr );
 static void     transmitJoinResponse( t_addrType *a_dstAddr, bool a_joinSuccess, bool a_lowPower );
 static void     packetAck( t_ackPacket *a_packet );
@@ -204,7 +204,7 @@ E_cmdType transmitRx( t_transmitPacket *a_packet )
            return ERR_ORDER;
         }
         
-        //TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
+        TOGGLE_GPIO_PIN(LED_GPIO_Port, LED_Pin);
         /* The packet type */
         switch( a_packet->m_cmdType )
         {
@@ -718,7 +718,6 @@ static void transmitAck( uint16_t a_dstAddr, uint8_t a_transmitId )
                 ((t_ackPacket *)transmitCommandFind->m_packet)->m_dstAddr.addr.m_dstShortAddr == a_dstAddr &&
                 ((t_ackPacket *)transmitCommandFind->m_packet)->m_transmitID == a_transmitId )
             {
-                //checkTransmitQueue();
                 return;
             }
             transmitCommandFind = transmitCommandFind->m_next;
