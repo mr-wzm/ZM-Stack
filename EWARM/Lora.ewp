@@ -4163,6 +4163,10 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\Common\loraConfigLP.h</name>
+            <excluded>
+                <configuration>Lora_Coordinator</configuration>
+                <configuration>Lora_Device</configuration>
+            </excluded>
         </file>
     </group>
     <group>

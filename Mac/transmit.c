@@ -718,6 +718,7 @@ static void transmitAck( uint16_t a_dstAddr, uint8_t a_transmitId )
                 ((t_ackPacket *)transmitCommandFind->m_packet)->m_dstAddr.addr.m_dstShortAddr == a_dstAddr &&
                 ((t_ackPacket *)transmitCommandFind->m_packet)->m_transmitID == a_transmitId )
             {
+                checkTransmitQueue();
                 return;
             }
             transmitCommandFind = transmitCommandFind->m_next;

@@ -27,8 +27,9 @@
 #include "sx1276-Hal.h"
 #include "sx1276.h"
 #include "sx1276-LoRaMisc.h"
-#include "sx1276-LoRa.h"
 #include "OStask.h"
+#include "transmit.h"
+#include "attribute.h"
 #include "OS_timers.h"
 #include "lora_driver.h"
 /*************************************************************************************************************************
@@ -557,12 +558,36 @@ void loraDoneHandler( void )
     /* Rx Done */
     else if( RFLR_STATE_RX_RUNNING == g_radioStatus )
     {
+        /* Clear error Irq */
+        //SX1276Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_PAYLOADCRCERROR  );
+        if( nwkAttribute.m_nwkStatus == true )
+        {
+            uint16_t panId = 0x0000;
+            SX1276Read( REG_LR_FIFORXCURRENTADDR, &SX1276LR->RegFifoRxCurrentAddr );
+            SX1276Read( REG_LR_NBRXBYTES, &SX1276LR->RegNbRxBytes );
+            SX1276LR->RegFifoAddrPtr = SX1276LR->RegFifoRxCurrentAddr;
+            SX1276Write( REG_LR_FIFOADDRPTR, SX1276LR->RegFifoAddrPtr );
+            SX1276ReadFifo( (uint8_t *)&panId, sizeof(uint16_t)/sizeof(uint8_t) );
+            if( panId != nwkAttribute.m_panId )
+            {
+                /* Clear done Irq */
+                SX1276Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXDONE  );
+                /* Clear error Irq */
+                SX1276Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_PAYLOADCRCERROR  );
+                //loraEnterStandby();
+                checkTransmitQueue();
+#if configUSE_TICKLESS_IDLE == 0
+                startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE, NULL );
+#endif
+                return;
+            }
+        }
         if( LoRaSettings.FreqHopOn == true )
         {
             SX1276Read( REG_LR_HOPCHANNEL, &SX1276LR->RegHopChannel );
             SX1276LoRaSetRFFrequency( HoppingFrequencies[SX1276LR->RegHopChannel & RFLR_HOPCHANNEL_CHANNEL_MASK] );
         }
-        // Clear Irq
+        /* Clear done Irq */
         SX1276Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXDONE  );
         /* Check crc */
         SX1276Read( REG_LR_IRQFLAGS, &SX1276LR->RegIrqFlags );

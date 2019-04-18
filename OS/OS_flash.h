@@ -73,7 +73,8 @@ E_typeErr flashWriteData( uint16_t a_addr, uint8_t *a_data, uint8_t a_size );
 * OUTPUTS:
 *     E_typeErr
 * NOTE:
-*     擦除的地址必须为4的倍数，一次擦除4个字节
+*     The erased address must be a multiple of 4 and 
+*     erasing 4 bytes at a time.
 *****************************************************************/
 E_typeErr flashEraseData( uint16_t a_addr, uint8_t a_size );
  

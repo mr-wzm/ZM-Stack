@@ -434,7 +434,7 @@ t_timerList *stopTimer( E_timerEvent a_timerEvent, E_timerType a_timerType )
         timerListNode = findTimer(a_timerEvent, false);
         if( timerListNode )
         {
-            xTimerStop( timerListNode->m_timerHandle, 100 );
+            xTimerStop( timerListNode->m_timerHandle, 10 );
             if( a_timerType == SINGLE_TIMER )
             {
                 return timerListNode;
