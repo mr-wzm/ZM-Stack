@@ -87,6 +87,7 @@ t_macCsmaParm                macPIB;
 static void     retransmitCurrentPointNext( void );
 static void     addTransmitCommandQueue( t_transmitCommandQueue *transmitCommandNode );
 static void     transmitAck( uint16_t a_shortAddr, uint8_t a_transmitId ) __FUNCTION_POSSIBLE_UNUSED;
+static void     transmitLeaveRequest( void );
 static void     transmitLeave( t_addrType *a_dstAddr );
 static void     transmitJoinResponse( t_addrType *a_dstAddr, bool a_joinSuccess, bool a_lowPower );
 static void     packetAck( t_ackPacket *a_packet );
@@ -234,6 +235,9 @@ E_cmdType transmitRx( t_transmitPacket *a_packet )
             break;
         case LEAVE_ORDER:
             leaveNetwork();
+            break;
+        case LEAVE_REQUEST_ORDER:
+            deleteDevice(getDeviceAttWithShortAddr(((t_leavePacket *)a_packet)->m_srcAddr));
             break;
         default:
             break;
@@ -842,6 +846,25 @@ void transmitJoinRequest( void )
 }
 
 /*****************************************************************
+* DESCRIPTION: loraDeviceExitNetwork
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void loraDeviceExitNetwork( void )
+{
+    for( uint8_t count = 0; count < BROADCAST_MAX_NUM; count++ )
+    {
+        transmitLeaveRequest();
+    }
+    startSingleTimer( LORA_DEVICE_EXIT_NWK_EVENT, 3000, leaveNetwork );
+}
+
+/*****************************************************************
 * DESCRIPTION: loraDeleteDevice
 *     
 * INPUTS:
@@ -853,9 +876,59 @@ void transmitJoinRequest( void )
 *****************************************************************/
 void loraDeleteDevice( t_addrType *a_dstAddr )
 {
-    for( uint8_t count = 0; count < BROADCAST_MAX_NUM; count++ )
+    if( getNetworkStatus() == NETWORK_COOR )
     {
-        transmitLeave(a_dstAddr);
+        if( a_dstAddr->addrMode == pointAddr16Bit )
+        {
+            deleteDevice(getDeviceAttWithShortAddr(a_dstAddr->addr.m_dstShortAddr));
+        }
+        else if( a_dstAddr->addrMode == pointAddr64Bit )
+        {
+            deleteDevice(getDeviceAttWithMac(a_dstAddr->addr.m_dstMacAddr));
+        }
+        for( uint8_t count = 0; count < BROADCAST_MAX_NUM; count++ )
+        {
+            transmitLeave(a_dstAddr);
+        } 
+    }
+}
+
+/*****************************************************************
+* DESCRIPTION: transmitLeaveRequest
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+static void transmitLeaveRequest( void )
+{
+    t_transmitCommandQueue *transmitCommandNode = (t_transmitCommandQueue *)pvPortMalloc(sizeof(t_transmitCommandQueue));
+    if( transmitCommandNode == NULL )
+    {
+        checkTransmitQueue();
+        return;
+    }
+    t_leavePacket *leaveRequestPacket = (t_leavePacket *)pvPortMalloc(sizeof(t_leavePacket));
+    if( leaveRequestPacket )
+    {
+        leaveRequestPacket->m_dstAddr.addrMode = pointAddr16Bit;
+        leaveRequestPacket->m_dstAddr.addr.m_dstShortAddr = 0x0000;
+        leaveRequestPacket->m_panId = nwkAttribute.m_panId;
+        leaveRequestPacket->m_srcAddr = nwkAttribute.m_shortAddr;
+        leaveRequestPacket->m_cmdType = LEAVE_REQUEST_ORDER;
+        transmitCommandNode->m_size = sizeof(t_leavePacket);
+        transmitCommandNode->m_packet = leaveRequestPacket;
+        transmitCommandNode->m_cmdType = leaveRequestPacket->m_cmdType;
+        transmitCommandNode->m_next = NULL;
+        addTransmitCommandQueue(transmitCommandNode);
+    }
+    else
+    {
+        vPortFree(leaveRequestPacket);
+        checkTransmitQueue();
     }
 }
 

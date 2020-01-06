@@ -558,8 +558,6 @@ void loraDoneHandler( void )
     /* Rx Done */
     else if( RFLR_STATE_RX_RUNNING == g_radioStatus )
     {
-        /* Clear error Irq */
-        //SX1276Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_PAYLOADCRCERROR  );
         if( nwkAttribute.m_nwkStatus == true )
         {
             uint16_t panId = 0x0000;

@@ -57,6 +57,7 @@ typedef enum
 /* Lora events */
     LORA_TIMEOUT_EVENT,
     LORA_ALLOW_JOIN_TIME_EVENT,
+    LORA_DEVICE_EXIT_NWK_EVENT,
     
 /* Transmit events */
     //CTS_DURATION_EVENT,

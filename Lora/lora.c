@@ -50,7 +50,7 @@
 #define LOW_POWER_WAIT_TIME                      100
 /* Lora sx127x work mode error */
 #define LORA_ERR_MIN_NUM                         5
-#define LORA_ERR_MAX_NUM                         20
+#define LORA_ERR_MAX_NUM                         30
 /*************************************************************************************************************************
  *                                                      CONSTANTS                                                        *
  *************************************************************************************************************************/
@@ -248,6 +248,7 @@ void loraProcess( void *parm )
 void loraEnterLowPower( void )
 {
 #if configUSE_TICKLESS_IDLE == 1
+    /* Get which timer is active */
     t_timerActiveList timerList = whichTimerIsActive();
     /* No timer task is working */
     if( timerList.m_activeNum < 3 && timerList.m_activeNum )
@@ -404,7 +405,7 @@ static void loraReceiveDone( uint8_t *a_data, uint16_t a_size )
         xTaskNotify( loraTaskHandle, LORA_NOTIFY_SET_PANID, eSetBits );
     }
 #endif
-    g_loraErrCount = 0;
+    //g_loraErrCount = 0;
     switch( transmitRx( (t_transmitPacket *)a_data ) )
     {
     case DATA_ORDER:
@@ -641,7 +642,10 @@ static void loraCadTimeout( void )
         }
         loraReceiveData();
     }
-    startSingleTimer( TRANSMIT_NB_TIME_EVENT, getAvoidtime(), getChannelStarus );
+    else
+    {
+        startSingleTimer( TRANSMIT_NB_TIME_EVENT, getAvoidtime(), getChannelStarus );
+    }
 }
 
 

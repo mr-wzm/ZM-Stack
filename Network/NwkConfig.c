@@ -47,7 +47,8 @@
 /*************************************************************************************************************************
  *                                                   GLOBAL VARIABLES                                                    *
  *************************************************************************************************************************/
-static uint8_t g_channelNum = 0; 
+static uint8_t              g_channelNum = 0;
+static E_nwkIdentity        g_networkIdentity = nwkIdentityNone;
 /*************************************************************************************************************************
  *                                                  EXTERNAL VARIABLES                                                   *
  *************************************************************************************************************************/
@@ -90,13 +91,24 @@ void nwkConfigProcess( void *parm )
         if( !tempState )
         {
 #ifdef SELF_ORGANIZING_NETWORK
+            if( nwkIdentityCoor == g_networkIdentity )
+            {
+                setNetworkStatus(NETWORK_FIND_CHANNEL);
+                tempState = findChannel();
+            }
+            else if( nwkIdentityDevice == g_networkIdentity )
+            {
+                setNetworkStatus(NETWORK_JOIN_SCAN);
+                tempState = joinNetwork();
+            }
+            else
+            {
 #ifdef DEVICE_TYPE_COOR
-            setNetworkStatus(NETWORK_FIND_CHANNEL);
-            tempState = findChannel();
+                g_networkIdentity = nwkIdentityCoor;
 #else
-            setNetworkStatus(NETWORK_JOIN_SCAN);
-            tempState = joinNetwork();
+                g_networkIdentity = nwkIdentityDevice;
 #endif
+            }
 #else
             if( nwkAttribute.m_shortAddr == 0x0000 )
             {
@@ -268,6 +280,36 @@ bool joinNetwork( void )
     return false;
 }
 
+
+/*****************************************************************
+* DESCRIPTION: getNetworkIdentity
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+E_nwkIdentity getNetworkIdentity( void )
+{
+    return g_networkIdentity;
+}
+
+/*****************************************************************
+* DESCRIPTION: setNetworkIdentity
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void setNetworkIdentity( E_nwkIdentity a_nwkIdentity )
+{
+    g_networkIdentity = a_nwkIdentity;
+}
 /*****************************************************************
 * DESCRIPTION: networConfigkStart
 *     

@@ -65,12 +65,13 @@ typedef enum
 }E_nwkStatus;
 
 
-//#pragma pack(1) //One byte alignment
+
+#pragma pack(1) //One byte alignment
 
 
 
 
-//#pragma pack() //The end of the alignment
+#pragma pack() //The end of the alignment
 /*************************************************************************************************************************
  *                                                  EXTERNAL VARIABLES                                                   *
  *************************************************************************************************************************/

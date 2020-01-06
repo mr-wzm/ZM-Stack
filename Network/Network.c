@@ -84,10 +84,11 @@ void networkInit( void )
 {
     initEEP();
     
-#ifdef SELF_ORGANIZING_NETWORK
 #ifdef DEVICE_TYPE_COOR
     g_networkStatus = NETWORK_INIT;
-#endif
+    setNetworkIdentity(nwkIdentityCoor);
+#else
+    setNetworkIdentity(nwkIdentityDevice);
 #endif
     if( nwkAttribute.m_nwkStatus == true &&
         nwkAttribute.m_panId != 0x0000 )
@@ -124,9 +125,15 @@ void networkProcess( void *parm )
 {
    uint32_t eventId = 0;
    
-   networConfigkStart();
-
+   /* Open uart connect zigbee */
    zigbeeUartInit();
+   /* Network initialize if the network status
+      is NETWORK_INIT */
+   //if( NETWORK_INIT == g_networkStatus )
+   {
+       networConfigkStart();
+   }
+
 #ifdef DEVICE_TYPE_COOR
    //t_addrType dstaddr;
    //dstaddr.addrMode = broadcastAddr;
@@ -222,5 +229,8 @@ void setNetworkStatus( E_nwkStatus a_status )
 {
     g_networkStatus = a_status;
 }
+
+
+
 
 /****************************************************** END OF FILE ******************************************************/

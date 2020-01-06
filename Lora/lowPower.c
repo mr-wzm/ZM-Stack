@@ -120,6 +120,7 @@ void sysEnterLowPower( uint32_t *a_xModifiableIdleTime )
 void sysExitLowPower( uint32_t *a_xExpectedIdleTime )
 {
 #ifdef SYSTEM_LOW_POWER_STOP
+    /* Reconfig system clock */
     SystemClock_Config();
     /* DMA controller clock enable */
     __HAL_RCC_DMA1_CLK_ENABLE();

@@ -157,7 +157,7 @@ void uartDmaSendDone( void )
     g_uartDmaIndex.m_uartBusy = false;
     /* Stop dma transmit */
     HAL_UART_DMAStop(&huart4);
-    
+    /* Switch to receive mode */
     zigbeeUartStartReceive();
 }
 
@@ -174,13 +174,27 @@ void uartDmaSendDone( void )
 void uartReceiveDone( void )
 {
     t_addrType dstAddr;
-    
+    static uint8_t sendDst = 0;
+    t_deviceList *deviceListNode = deviceList;
     /* Get data size */
     g_uartDmaIndex.m_dataSize = (LORA_BUFFER_SIZE_MAX - __HAL_DMA_GET_COUNTER(&hdma_usart4_rx));
     
     dstAddr.addrMode = pointAddr16Bit;
     if( nwkAttribute.m_shortAddr == 0x0000 )
-        dstAddr.addr.m_dstShortAddr = 0xE086;//0x0923;
+    {
+#ifdef DEVICE_TYPE_COOR
+        //dstAddr.addr.m_dstShortAddr = 0xE086;//0x0923;
+        for( uint8_t cnt = 0; cnt < sendDst; cnt++ )
+        {
+            deviceListNode = deviceListNode->m_next;
+        }
+        dstAddr.addr.m_dstShortAddr = deviceListNode->m_shortAddr;
+        if (sendDst == nwkAttribute.m_deviceNum)
+            sendDst = 0;
+        else
+            sendDst = sendDst%nwkAttribute.m_deviceNum + 1;
+#endif
+    }
     else
        dstAddr.addr.m_dstShortAddr = 0x0000; 
     transmitTx( &dstAddr, g_uartDmaIndex.m_dataSize, g_uartDmaIndex.m_data );

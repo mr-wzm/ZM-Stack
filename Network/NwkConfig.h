@@ -38,6 +38,15 @@ extern "C"
  *                                                       TYPEDEFS                                                        *
  *************************************************************************************************************************/
 
+/*
+ * Network identity.
+ */
+typedef enum
+{
+    nwkIdentityNone = 0U,
+    nwkIdentityCoor,
+    nwkIdentityDevice,
+}E_nwkIdentity;
 /**
  *
  */
@@ -86,6 +95,28 @@ bool findChannel( void );
 *     null
 *****************************************************************/
 bool joinNetwork( void );
+/*****************************************************************
+* DESCRIPTION: getNetworkIdentity
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+E_nwkIdentity getNetworkIdentity( void );
+/*****************************************************************
+* DESCRIPTION: setNetworkIdentity
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void setNetworkIdentity( E_nwkIdentity a_nwkIdentity );
 /*****************************************************************
 * DESCRIPTION: networConfigkStart
 *     

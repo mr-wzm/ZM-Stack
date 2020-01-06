@@ -71,6 +71,7 @@ typedef enum
     JOIN_RESPONSE_ORDER,
     ANNONCE_ORDER,
     ANNONCE_COLLISION_ORDER,
+    LEAVE_REQUEST_ORDER,
     LEAVE_ORDER,
     //RTS_ORDER,
     //CTS_ORDER,
@@ -417,6 +418,17 @@ void transmitBeacon( void );
 *     null
 *****************************************************************/
 void transmitJoinRequest( void );
+/*****************************************************************
+* DESCRIPTION: loraDeviceExitNetwork
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void loraDeviceExitNetwork( void );
 /*****************************************************************
 * DESCRIPTION: transmitLeave
 *     
