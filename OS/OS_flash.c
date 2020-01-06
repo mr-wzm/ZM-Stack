@@ -108,7 +108,8 @@ E_typeErr flashWriteData( uint16_t a_addr, uint8_t *a_data, uint8_t a_size )
     uint8_t *ptr = a_data;
     /* Feed dog first, it will take a lot of time */
     systemFeedDog();
-    __disable_interrupt();
+    //__disable_interrupt();
+    __disable_irq();
     // Unlock eeprom
     HAL_FLASHEx_DATAEEPROM_Unlock();
     
@@ -120,8 +121,8 @@ E_typeErr flashWriteData( uint16_t a_addr, uint8_t *a_data, uint8_t a_size )
     // lock eeprom
     HAL_FLASHEx_DATAEEPROM_Lock();
     
-    __enable_interrupt();
-    
+    //__enable_interrupt();
+    __enable_irq();
     return E_SUCCESS;
 }
 
