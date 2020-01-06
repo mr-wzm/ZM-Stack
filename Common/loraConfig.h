@@ -33,11 +33,18 @@ extern "C"
 /*************************************************************************************************************************
  *                                                        MACROS                                                         *
  *************************************************************************************************************************/
+
 #ifdef DEVICE_TYPE_COOR
 #ifndef SELF_ORGANIZING_NETWORK
-#error "If you need use DEVICE_TYPE_COOR please define SELF_ORGANIZING_NETWORK"
+#error "If you need use DEVICE_TYPE_COOR please define SELF_ORGANIZING_NETWORK!"
 #endif
 #endif
+
+#if defined(DEVICE_TYPE_COOR) && defined(DEVICE_TYPE_DEVICE)
+#error "DEVICE_TYPE_COOR and DEVICE_TYPE_DEVICE can only choose one!"
+#endif
+    
+#define __FUNCTION_POSSIBLE_UNUSED    __attribute__ ((unused))
 
 #ifndef BV
 #define BV(x)       (1 << (x))
@@ -54,6 +61,11 @@ extern "C"
 #define SECURITY_KEY_LEN            16
 /* Lora max buffer size */
 #define LORA_BUFFER_SIZE_MAX        255
+/* Lora preamble length */
+#define LORA_PREAMBLE_LENGTH        10
+/* Low power mode preamble length */
+#define LORA_PREAMBLE_LENGTH_LP     1000
+
 
 /*
  * ULONG_MAX
@@ -89,15 +101,15 @@ extern "C"
 typedef uint8_t ZLongAddr_t[MAC_ADDR_LEN];
 
 /*
- * success or faild
+ * success or faild.
  */ 
 typedef enum
 {
     E_ERR = 0,
     E_SUCCESS,
 }E_typeErr;
-    
-    
+
+   
 /*************************************************************************************************************************
  *                                                  EXTERNAL VARIABLES                                                   *
  *************************************************************************************************************************/

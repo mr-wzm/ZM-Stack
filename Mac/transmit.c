@@ -84,12 +84,12 @@ t_macCsmaParm                macPIB;
 /*************************************************************************************************************************
  *                                                 FUNCTION DECLARATIONS                                                 *
  *************************************************************************************************************************/
-static int      getRand( void );
 static void     retransmitCurrentPointNext( void );
 static void     addTransmitCommandQueue( t_transmitCommandQueue *transmitCommandNode );
-static void     transmitAck( uint16_t a_shortAddr, uint8_t a_transmitId );
+static void     transmitAck( uint16_t a_shortAddr, uint8_t a_transmitId ) __FUNCTION_POSSIBLE_UNUSED;
+static void     transmitLeaveRequest( void );
 static void     transmitLeave( t_addrType *a_dstAddr );
-static void     transmitJoinResponse( E_addrMode a_addrMode, uint8_t *a_dstAddr, bool a_joinSuccess );
+static void     transmitJoinResponse( t_addrType *a_dstAddr, bool a_joinSuccess, bool a_lowPower );
 static void     packetAck( t_ackPacket *a_packet );
 static void     packetBeacon( t_beaconPacket *a_packet );
 static void     packetJoinRequest( t_joinRequestPacket *a_packet );
@@ -164,8 +164,10 @@ E_typeErr transmitTx( t_addrType *a_dstAddr, uint8_t a_size, uint8_t *a_data )
         transmitEnd = packetQueue;
         /* Record queue number */
         g_queueCount++;
+        
+        setTransmitType(transmitSendData());
         /* Send notify to lora process */
-        xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
+        //xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
 
         return E_SUCCESS;
     }
@@ -209,10 +211,12 @@ E_cmdType transmitRx( t_transmitPacket *a_packet )
         {
         case DATA_ORDER:
             dataDecode( a_packet->m_keyNum, a_packet->m_data, a_packet->m_size );
+#ifndef SYSTEM_LOW_POWER_STOP
             if( a_packet->m_dstAddr.addrMode != broadcastAddr )
             {
                 transmitAck( a_packet->m_srcAddr, a_packet->m_transmitID );
             }
+#endif
             break;
         case ACK_ORDER:
             packetAck( (t_ackPacket *)a_packet );
@@ -231,6 +235,9 @@ E_cmdType transmitRx( t_transmitPacket *a_packet )
             break;
         case LEAVE_ORDER:
             leaveNetwork();
+            break;
+        case LEAVE_REQUEST_ORDER:
+            deleteDevice(getDeviceAttWithShortAddr(((t_leavePacket *)a_packet)->m_srcAddr));
             break;
         default:
             break;
@@ -266,6 +273,17 @@ E_transmitType transmitSendData( void )
     loraEnterStandby();
     if( transmitHead )
     {
+#ifdef DEVICE_TYPE_COOR
+        t_deviceList *deviceNode = getDeviceAttWithShortAddr(transmitHead->m_transmitPacket.m_dstAddr.addr.m_dstShortAddr);
+        if( deviceNode )
+        {
+            if( deviceNode->m_lowPowerDevice == true )
+            {
+                loraSetFrequency( LORA_FREQUENCY_MAX );
+                loraSetPreambleLength(LORA_PREAMBLE_LENGTH_LP);
+            }
+        }
+#endif
         /* Send message */
         if( loraSendData( (uint8_t *)&transmitHead->m_transmitPacket, 
                          sizeof(t_transmitPacket) + transmitHead->m_transmitPacket.m_size ) != E_SUCCESS )
@@ -622,28 +640,13 @@ void checkTransmitQueue( void )
     else
     {
 #if configUSE_TICKLESS_IDLE == 1
-        
+        loraEnterLowPower();
 #else
         loraReceiveData();
 #endif
     }
 }
 
-/*****************************************************************
-* DESCRIPTION: getRand
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-static int getRand( void )
-{
-    srand(HAL_GetTick());
-    return rand();
-}
 
 /*****************************************************************
 * DESCRIPTION: retransmitCurrentPointNext
@@ -719,7 +722,7 @@ static void transmitAck( uint16_t a_dstAddr, uint8_t a_transmitId )
                 ((t_ackPacket *)transmitCommandFind->m_packet)->m_dstAddr.addr.m_dstShortAddr == a_dstAddr &&
                 ((t_ackPacket *)transmitCommandFind->m_packet)->m_transmitID == a_transmitId )
             {
-                //checkTransmitQueue();
+                checkTransmitQueue();
                 return;
             }
             transmitCommandFind = transmitCommandFind->m_next;
@@ -821,7 +824,12 @@ void transmitJoinRequest( void )
 #else
         joinRequestPacket->m_srcAddr.addrMode = pointAddr16Bit;
         joinRequestPacket->m_srcAddr.addr.m_dstShortAddr = nwkAttribute.m_shortAddr;
-#endif        
+#endif
+#if configUSE_TICKLESS_IDLE == 1
+        joinRequestPacket->m_lowPower = true;
+#else
+        joinRequestPacket->m_lowPower = false;
+#endif
         memcpy(joinRequestPacket->m_securityKey, securityKey, SECURITY_KEY_LEN );
         joinRequestPacket->m_keyNum = dataEncrypt( joinRequestPacket->m_securityKey, SECURITY_KEY_LEN );
         transmitCommandNode->m_size = sizeof(t_joinRequestPacket);
@@ -838,6 +846,25 @@ void transmitJoinRequest( void )
 }
 
 /*****************************************************************
+* DESCRIPTION: loraDeviceExitNetwork
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void loraDeviceExitNetwork( void )
+{
+    for( uint8_t count = 0; count < BROADCAST_MAX_NUM; count++ )
+    {
+        transmitLeaveRequest();
+    }
+    startSingleTimer( LORA_DEVICE_EXIT_NWK_EVENT, 3000, leaveNetwork );
+}
+
+/*****************************************************************
 * DESCRIPTION: loraDeleteDevice
 *     
 * INPUTS:
@@ -849,9 +876,59 @@ void transmitJoinRequest( void )
 *****************************************************************/
 void loraDeleteDevice( t_addrType *a_dstAddr )
 {
-    for( uint8_t count = 0; count < BROADCAST_MAX_NUM; count++ )
+    if( getNetworkStatus() == NETWORK_COOR )
     {
-        transmitLeave(a_dstAddr);
+        if( a_dstAddr->addrMode == pointAddr16Bit )
+        {
+            deleteDevice(getDeviceAttWithShortAddr(a_dstAddr->addr.m_dstShortAddr));
+        }
+        else if( a_dstAddr->addrMode == pointAddr64Bit )
+        {
+            deleteDevice(getDeviceAttWithMac(a_dstAddr->addr.m_dstMacAddr));
+        }
+        for( uint8_t count = 0; count < BROADCAST_MAX_NUM; count++ )
+        {
+            transmitLeave(a_dstAddr);
+        } 
+    }
+}
+
+/*****************************************************************
+* DESCRIPTION: transmitLeaveRequest
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+static void transmitLeaveRequest( void )
+{
+    t_transmitCommandQueue *transmitCommandNode = (t_transmitCommandQueue *)pvPortMalloc(sizeof(t_transmitCommandQueue));
+    if( transmitCommandNode == NULL )
+    {
+        checkTransmitQueue();
+        return;
+    }
+    t_leavePacket *leaveRequestPacket = (t_leavePacket *)pvPortMalloc(sizeof(t_leavePacket));
+    if( leaveRequestPacket )
+    {
+        leaveRequestPacket->m_dstAddr.addrMode = pointAddr16Bit;
+        leaveRequestPacket->m_dstAddr.addr.m_dstShortAddr = 0x0000;
+        leaveRequestPacket->m_panId = nwkAttribute.m_panId;
+        leaveRequestPacket->m_srcAddr = nwkAttribute.m_shortAddr;
+        leaveRequestPacket->m_cmdType = LEAVE_REQUEST_ORDER;
+        transmitCommandNode->m_size = sizeof(t_leavePacket);
+        transmitCommandNode->m_packet = leaveRequestPacket;
+        transmitCommandNode->m_cmdType = leaveRequestPacket->m_cmdType;
+        transmitCommandNode->m_next = NULL;
+        addTransmitCommandQueue(transmitCommandNode);
+    }
+    else
+    {
+        vPortFree(leaveRequestPacket);
+        checkTransmitQueue();
     }
 }
 
@@ -918,9 +995,9 @@ static void transmitLeave( t_addrType *a_dstAddr )
 * NOTE:
 *     null
 *****************************************************************/
-static void transmitJoinResponse( E_addrMode a_addrMode, uint8_t *a_dstAddr, bool a_joinSuccess )
+static void transmitJoinResponse( t_addrType *a_dstAddr, bool a_joinSuccess, bool a_lowPower )
 {
-    if( a_addrMode == broadcastAddr )
+    if( a_dstAddr->addrMode == broadcastAddr )
     {
         return;
     }
@@ -934,18 +1011,21 @@ static void transmitJoinResponse( E_addrMode a_addrMode, uint8_t *a_dstAddr, boo
     {
         joinResponsePacket->m_panId = nwkAttribute.m_panId;
         joinResponsePacket->m_cmdType = JOIN_RESPONSE_ORDER;
-        joinResponsePacket->m_dstAddr.addrMode = a_addrMode;
-        if( a_addrMode == pointAddr16Bit )
+        joinResponsePacket->m_dstAddr.addrMode = a_dstAddr->addrMode;
+        if( a_dstAddr->addrMode == pointAddr16Bit )
         {
-            joinResponsePacket->m_dstAddr.addr.m_dstShortAddr = (uint16_t)(a_dstAddr[0] << 8 | a_dstAddr[1]);
+            joinResponsePacket->m_dstAddr.addr.m_dstShortAddr = (uint16_t)(a_dstAddr->addr.m_dstMacAddr[0] << 8 | a_dstAddr->addr.m_dstMacAddr[1]);
         }
-        else if( a_addrMode == pointAddr64Bit )
+        else if( a_dstAddr->addrMode == pointAddr64Bit )
         {
-            memcpy(joinResponsePacket->m_dstAddr.addr.m_dstMacAddr, a_dstAddr, MAC_ADDR_LEN);
+            memcpy(joinResponsePacket->m_dstAddr.addr.m_dstMacAddr, a_dstAddr->addr.m_dstMacAddr, MAC_ADDR_LEN);
         }
 #ifdef SELF_ORGANIZING_NETWORK
-        joinResponsePacket->m_shortAddr = getRand();
-#endif        
+        if( a_joinSuccess == true )
+        {
+            joinResponsePacket->m_shortAddr = increaseNewDevice( a_dstAddr->addr.m_dstMacAddr, a_lowPower );
+        }
+#endif
         joinResponsePacket->m_joinSuccess = a_joinSuccess;
         joinResponsePacket->m_srcAddr = nwkAttribute.m_shortAddr;
         transmitCommandNode->m_size = sizeof(t_joinResponsePacket);
@@ -1031,11 +1111,11 @@ static void packetJoinRequest( t_joinRequestPacket *a_packet )
     dataDecode( a_packet->m_keyNum, a_packet->m_securityKey,  SECURITY_KEY_LEN);
     if( memcmp( a_packet->m_securityKey, securityKey, SECURITY_KEY_LEN ) == 0 )
     {
-        transmitJoinResponse( a_packet->m_srcAddr.addrMode, a_packet->m_srcAddr.addr.m_dstMacAddr, true );
+        transmitJoinResponse( &a_packet->m_srcAddr, true, a_packet->m_lowPower );
     }
     else
     {
-        transmitJoinResponse( a_packet->m_srcAddr.addrMode, a_packet->m_srcAddr.addr.m_dstMacAddr, false );
+        transmitJoinResponse( &a_packet->m_srcAddr, false, a_packet->m_lowPower );
     }
 }
 
@@ -1062,7 +1142,10 @@ static void packetJoinResponse( t_joinResponsePacket *a_packet )
 #endif
         nwkAttribute.m_nwkStatus = true;
         setNetworkStatus( NETWORK_DEVICE );
-        nwkAttributeSave();
+#if configUSE_TICKLESS_IDLE == 1
+        loraSetFrequency( LORA_FREQUENCY_MAX );
+#endif
+        eepSysNwkAttSave();
     }
     else
     {

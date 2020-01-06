@@ -27,8 +27,9 @@
 #include "sx1276-Hal.h"
 #include "sx1276.h"
 #include "sx1276-LoRaMisc.h"
-#include "sx1276-LoRa.h"
 #include "OStask.h"
+#include "transmit.h"
+#include "attribute.h"
 #include "OS_timers.h"
 #include "lora_driver.h"
 /*************************************************************************************************************************
@@ -140,6 +141,8 @@ void loraDriverInit( void )
     Radio = RadioDriverInit( );
     
     Radio->Init( );
+    
+    loraSetPreambleLength(LORA_PREAMBLE_LENGTH);
 }
 
 
@@ -210,7 +213,7 @@ double getLoraRssi( void )
 }
 
 /*****************************************************************
-* DESCRIPTION: loRaSetFrequency
+* DESCRIPTION: loraSetFrequency
 *     
 * INPUTS:
 *     
@@ -219,7 +222,7 @@ double getLoraRssi( void )
 * NOTE:
 *     null
 *****************************************************************/
-E_typeErr loRaSetFrequency( uint32_t a_freq )
+E_typeErr loraSetFrequency( uint32_t a_freq )
 {
     uint32_t freq;
     
@@ -237,7 +240,7 @@ E_typeErr loRaSetFrequency( uint32_t a_freq )
 }
 
 /*****************************************************************
-* DESCRIPTION: loRaGetFrequency
+* DESCRIPTION: loraGetFrequency
 *     
 * INPUTS:
 *     null
@@ -246,9 +249,41 @@ E_typeErr loRaSetFrequency( uint32_t a_freq )
 * NOTE:
 *     null
 *****************************************************************/
-uint32_t loRaGetFrequency( void )
+uint32_t loraGetFrequency( void )
 {
     return SX1276LoRaGetRFFrequency();
+}
+
+/*****************************************************************
+* DESCRIPTION: loraSetPreambleLength
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void loraSetPreambleLength( uint16_t a_value )
+{
+    loraEnterStandby();
+    
+    SX1276LoRaSetPreambleLength( a_value );
+}
+
+/*****************************************************************
+* DESCRIPTION: loraGetPreambleLength
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+uint16_t loraGetPreambleLength( void )
+{
+    return SX1276LoRaGetPreambleLength();
 }
 
 /*****************************************************************
@@ -330,7 +365,7 @@ E_typeErr loraSendData( uint8_t *a_data, uint8_t a_size )
     /* Set radio status to tx */
     g_radioStatus = RFLR_STATE_TX_RUNNING;
     /* Open send timer */
-    if( startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE+100, NULL ) == E_ERR )
+    if( startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE+loraGetPreambleLength(), NULL ) == E_ERR )
     {
         loraEnterStandby();
         return E_ERR;
@@ -424,7 +459,11 @@ E_typeErr loraReceiveData( void )
     /* Set radio status to rx */
     g_radioStatus = RFLR_STATE_RX_RUNNING;
     /* Open receive timer */
+#ifdef SYSTEM_LOW_POWER_STOP
+    if( startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE+loraGetPreambleLength(), NULL ) == E_ERR )
+#else
     if( startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE, NULL ) == E_ERR )
+#endif
     {
         loraEnterStandby();
         return E_ERR;
@@ -519,12 +558,34 @@ void loraDoneHandler( void )
     /* Rx Done */
     else if( RFLR_STATE_RX_RUNNING == g_radioStatus )
     {
+        if( nwkAttribute.m_nwkStatus == true )
+        {
+            uint16_t panId = 0x0000;
+            SX1276Read( REG_LR_FIFORXCURRENTADDR, &SX1276LR->RegFifoRxCurrentAddr );
+            SX1276Read( REG_LR_NBRXBYTES, &SX1276LR->RegNbRxBytes );
+            SX1276LR->RegFifoAddrPtr = SX1276LR->RegFifoRxCurrentAddr;
+            SX1276Write( REG_LR_FIFOADDRPTR, SX1276LR->RegFifoAddrPtr );
+            SX1276ReadFifo( (uint8_t *)&panId, sizeof(uint16_t)/sizeof(uint8_t) );
+            if( panId != nwkAttribute.m_panId )
+            {
+                /* Clear done Irq */
+                SX1276Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXDONE  );
+                /* Clear error Irq */
+                SX1276Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_PAYLOADCRCERROR  );
+                //loraEnterStandby();
+                checkTransmitQueue();
+#if configUSE_TICKLESS_IDLE == 0
+                startSingleTimer( LORA_TIMEOUT_EVENT, LORA_TIMEOUT_VALUE, NULL );
+#endif
+                return;
+            }
+        }
         if( LoRaSettings.FreqHopOn == true )
         {
             SX1276Read( REG_LR_HOPCHANNEL, &SX1276LR->RegHopChannel );
             SX1276LoRaSetRFFrequency( HoppingFrequencies[SX1276LR->RegHopChannel & RFLR_HOPCHANNEL_CHANNEL_MASK] );
         }
-        // Clear Irq
+        /* Clear done Irq */
         SX1276Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXDONE  );
         /* Check crc */
         SX1276Read( REG_LR_IRQFLAGS, &SX1276LR->RegIrqFlags );

@@ -83,6 +83,9 @@
  *----------------------------------------------------------*/
 
 /* USER CODE BEGIN Includes */   	      
+#if configUSE_TICKLESS_IDLE != 0
+#include "loraConfigLP.h"
+#endif
 /* Section where include file can be added */
 /* USER CODE END Includes */ 
 

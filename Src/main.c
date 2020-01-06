@@ -52,6 +52,7 @@
 #include "cmsis_os.h"
 #include "dma.h"
 #include "iwdg.h"
+#include "rtc.h"
 #include "spi.h"
 #include "usart.h"
 #include "gpio.h"
@@ -124,14 +125,17 @@ int main(void)
   MX_SPI1_Init();
   MX_USART4_UART_Init();
   MX_IWDG_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 
+  halDriverInit();
+      
   loraInit();
-
+  
   networkInit();
   
   osTimerInit();
-
+  
   osTaskInit();
   
   /* USER CODE END 2 */
@@ -189,6 +193,25 @@ void SystemClock_Config(void)
   {
     
   }
+  LL_PWR_EnableBkUpAccess();
+
+  LL_RCC_ForceBackupDomainReset();
+
+  LL_RCC_ReleaseBackupDomainReset();
+
+  LL_RCC_LSE_SetDriveCapability(LL_RCC_LSEDRIVE_LOW);
+
+  LL_RCC_LSE_Enable();
+
+   /* Wait till LSE is ready */
+  while(LL_RCC_LSE_IsReady() != 1)
+  {
+    
+  }
+  LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSE);
+
+  LL_RCC_EnableRTC();
+
   LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSI, LL_RCC_PLL_MUL_4, LL_RCC_PLL_DIV_2);
 
   LL_RCC_PLL_Enable();

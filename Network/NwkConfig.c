@@ -47,7 +47,8 @@
 /*************************************************************************************************************************
  *                                                   GLOBAL VARIABLES                                                    *
  *************************************************************************************************************************/
-static uint8_t g_channelNum = 0; 
+static uint8_t              g_channelNum = 0;
+static E_nwkIdentity        g_networkIdentity = nwkIdentityNone;
 /*************************************************************************************************************************
  *                                                  EXTERNAL VARIABLES                                                   *
  *************************************************************************************************************************/
@@ -90,13 +91,24 @@ void nwkConfigProcess( void *parm )
         if( !tempState )
         {
 #ifdef SELF_ORGANIZING_NETWORK
+            if( nwkIdentityCoor == g_networkIdentity )
+            {
+                setNetworkStatus(NETWORK_FIND_CHANNEL);
+                tempState = findChannel();
+            }
+            else if( nwkIdentityDevice == g_networkIdentity )
+            {
+                setNetworkStatus(NETWORK_JOIN_SCAN);
+                tempState = joinNetwork();
+            }
+            else
+            {
 #ifdef DEVICE_TYPE_COOR
-            setNetworkStatus(NETWORK_FIND_CHANNEL);
-            tempState = findChannel();
+                g_networkIdentity = nwkIdentityCoor;
 #else
-            setNetworkStatus(NETWORK_JOIN_SCAN);
-            tempState = joinNetwork();
+                g_networkIdentity = nwkIdentityDevice;
 #endif
+            }
 #else
             if( nwkAttribute.m_shortAddr == 0x0000 )
             {
@@ -144,7 +156,7 @@ bool findChannel( void )
         if( channelNum != g_channelNum )
         {
             channelNum = g_channelNum;
-            loRaSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*g_channelNum );
+            loraSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*g_channelNum );
             startSingleTimer( NETWORK_DETECTION_CHANNEL_EVENT, DETECTION_CHANNEL_TIME, detectionChannelTimeout );
         }
         /* Detection channel */
@@ -173,7 +185,7 @@ bool findChannel( void )
             channelValue[count] = 0;
         }
         g_channelNum = 0;
-        loRaSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*nwkAttribute.m_channelNum );
+        loraSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*nwkAttribute.m_channelNum );
 #ifdef SELF_ORGANIZING_NETWORK
         xTaskNotify( loraTaskHandle, LORA_NOTIFY_SET_PANID, eSetBits );
 #endif
@@ -205,7 +217,7 @@ bool joinNetwork( void )
         if( channelNum != g_channelNum )
         {
             channelNum = g_channelNum;
-            loRaSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*g_channelNum );
+            loraSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*g_channelNum );
             startSingleTimer( NETWORK_WAIT_BEACON_EVENT, WAIT_BEACON_TIME, detectionChannelTimeout );
 #ifndef SELF_ORGANIZING_NETWORK
             xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_JOIN_REQUEST, eSetBits );
@@ -259,7 +271,7 @@ bool joinNetwork( void )
         if( dstPanId != 0x0000 )
         {
             nwkAttribute.m_panId = dstPanId;
-            loRaSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*nwkAttribute.m_channelNum );
+            loraSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*nwkAttribute.m_channelNum );
             xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_JOIN_REQUEST, eSetBits );
             return true;
         }
@@ -268,6 +280,36 @@ bool joinNetwork( void )
     return false;
 }
 
+
+/*****************************************************************
+* DESCRIPTION: getNetworkIdentity
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+E_nwkIdentity getNetworkIdentity( void )
+{
+    return g_networkIdentity;
+}
+
+/*****************************************************************
+* DESCRIPTION: setNetworkIdentity
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void setNetworkIdentity( E_nwkIdentity a_nwkIdentity )
+{
+    g_networkIdentity = a_nwkIdentity;
+}
 /*****************************************************************
 * DESCRIPTION: networConfigkStart
 *     

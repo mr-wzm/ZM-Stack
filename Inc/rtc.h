@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * @file           : main.h
-  * @brief          : Header for main.c file.
-  *                   This file contains the common defines of the application.
+  * File Name          : RTC.h
+  * Description        : This file provides code for the configuration
+  *                      of the RTC instances.
   ******************************************************************************
   * This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -46,78 +46,46 @@
   *
   ******************************************************************************
   */
-
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __MAIN_H__
-#define __MAIN_H__
+#ifndef __rtc_H
+#define __rtc_H
+#ifdef __cplusplus
+ extern "C" {
+#endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32l0xx_ll_iwdg.h"
-#include "stm32l0xx_ll_crs.h"
-#include "stm32l0xx_ll_rcc.h"
-#include "stm32l0xx_ll_bus.h"
-#include "stm32l0xx_ll_system.h"
-#include "stm32l0xx_ll_exti.h"
-#include "stm32l0xx_ll_cortex.h"
-#include "stm32l0xx_ll_utils.h"
-#include "stm32l0xx_ll_pwr.h"
-#include "stm32l0xx_ll_dma.h"
 #include "stm32l0xx_hal.h"
-#include "stm32l0xx_ll_spi.h"
-#include "stm32l0xx.h"
-#include "stm32l0xx_ll_gpio.h"
+#include "main.h"
 
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
 
-/* Private define ------------------------------------------------------------*/
-
-#define LORA_TXRX_CTRL_Pin LL_GPIO_PIN_2
-#define LORA_TXRX_CTRL_GPIO_Port GPIOA
-#define LORA_TXRX_POWER_Pin LL_GPIO_PIN_3
-#define LORA_TXRX_POWER_GPIO_Port GPIOA
-#define NSS_Pin LL_GPIO_PIN_4
-#define NSS_GPIO_Port GPIOA
-#define LED_Pin LL_GPIO_PIN_0
-#define LED_GPIO_Port GPIOB
-#define DIO5_Pin LL_GPIO_PIN_1
-#define DIO5_GPIO_Port GPIOB
-#define DIO4_Pin LL_GPIO_PIN_8
-#define DIO4_GPIO_Port GPIOA
-#define DIO3_Pin LL_GPIO_PIN_9
-#define DIO3_GPIO_Port GPIOA
-#define DIO2_Pin LL_GPIO_PIN_10
-#define DIO2_GPIO_Port GPIOA
-#define DIO1_Pin LL_GPIO_PIN_11
-#define DIO1_GPIO_Port GPIOA
-#define DIO0_Pin LL_GPIO_PIN_12
-#define DIO0_GPIO_Port GPIOA
-#define DIO0_EXTI_IRQn EXTI4_15_IRQn
-#define Lora_Reset_Pin LL_GPIO_PIN_4
-#define Lora_Reset_GPIO_Port GPIOB
-
-/* ########################## Assert Selection ############################## */
-/**
-  * @brief Uncomment the line below to expanse the "assert_param" macro in the 
-  *        HAL drivers code
-  */
-/* #define USE_FULL_ASSERT    1U */
+extern RTC_HandleTypeDef hrtc;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
-#ifdef __cplusplus
- extern "C" {
-#endif
-void _Error_Handler(char *, int);
+extern void _Error_Handler(char *, int);
 
-#define Error_Handler() _Error_Handler(__FILE__, __LINE__)
+void MX_RTC_Init(void);
+
+/* USER CODE BEGIN Prototypes */
+
+/* USER CODE END Prototypes */
+
 #ifdef __cplusplus
 }
 #endif
+#endif /*__ rtc_H */
 
-#endif /* __MAIN_H__ */
+/**
+  * @}
+  */
+
+/**
+  * @}
+  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -21,6 +21,7 @@
  *                                                       INCLUDES                                                        *
  *************************************************************************************************************************/
 #include "loraConfig.h"
+#include "iwdg.h"
 #include "OS_flash.h"
 /*************************************************************************************************************************
  *                                                        MACROS                                                         *
@@ -77,12 +78,13 @@ E_typeErr flashReadData( uint16_t a_addr, uint8_t *a_data, uint8_t a_size )
         return E_ERR;
     }
     uint8_t *pData;
+    uint8_t *ptr = a_data;
     /* Load start addr */
     pData = (uint8_t *)( DATA_EEPROM_BASE + a_addr );
     
     while(a_size--)
     {
-        *a_data++ = *pData++;
+        *ptr++ = *pData++;
     }
     return E_SUCCESS;
 }
@@ -103,6 +105,9 @@ E_typeErr flashWriteData( uint16_t a_addr, uint8_t *a_data, uint8_t a_size )
     {
         return E_ERR;
     }
+    uint8_t *ptr = a_data;
+    /* Feed dog first, it will take a lot of time */
+    systemFeedDog();
     __disable_interrupt();
     // Unlock eeprom
     HAL_FLASHEx_DATAEEPROM_Unlock();
@@ -110,7 +115,7 @@ E_typeErr flashWriteData( uint16_t a_addr, uint8_t *a_data, uint8_t a_size )
     while( a_size-- )
     {
         /* Write data in eeprom */
-        HAL_FLASHEx_DATAEEPROM_Program( FLASH_TYPEPROGRAMDATA_BYTE, DATA_EEPROM_BASE + a_addr++, *a_data++ );
+        HAL_FLASHEx_DATAEEPROM_Program( FLASH_TYPEPROGRAMDATA_BYTE, DATA_EEPROM_BASE + a_addr++, *ptr++ );
     }
     // lock eeprom
     HAL_FLASHEx_DATAEEPROM_Lock();
@@ -130,7 +135,8 @@ E_typeErr flashWriteData( uint16_t a_addr, uint8_t *a_data, uint8_t a_size )
 * OUTPUTS:
 *     E_typeErr
 * NOTE:
-*     擦除的地址必须为4的倍数，一次擦除4个字节
+*     The erased address must be a multiple of 4 and 
+*     erasing 4 bytes at a time.
 *****************************************************************/
 E_typeErr flashEraseData( uint16_t a_addr, uint8_t a_size )
 {

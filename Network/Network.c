@@ -82,12 +82,13 @@ TaskHandle_t                    networkTaskHandle;
 *****************************************************************/
 void networkInit( void )
 {
-    nwkAttributeRead();
+    initEEP();
     
-#ifdef SELF_ORGANIZING_NETWORK
 #ifdef DEVICE_TYPE_COOR
     g_networkStatus = NETWORK_INIT;
-#endif
+    setNetworkIdentity(nwkIdentityCoor);
+#else
+    setNetworkIdentity(nwkIdentityDevice);
 #endif
     if( nwkAttribute.m_nwkStatus == true &&
         nwkAttribute.m_panId != 0x0000 )
@@ -100,7 +101,13 @@ void networkInit( void )
         {
             g_networkStatus = NETWORK_COOR;
         }
-        loRaSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*nwkAttribute.m_channelNum );
+#if configUSE_TICKLESS_IDLE == 1
+        loraSetFrequency( LORA_FREQUENCY_MAX );
+        loraSetPreambleLength(LORA_PREAMBLE_LENGTH_LP);
+#else
+        loraSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*nwkAttribute.m_channelNum );
+        loraSetPreambleLength(LORA_PREAMBLE_LENGTH);
+#endif
     }
 }
 
@@ -118,10 +125,22 @@ void networkProcess( void *parm )
 {
    uint32_t eventId = 0;
    
-   networConfigkStart();
-   
+   /* Open uart connect zigbee */
    zigbeeUartInit();
-   
+   /* Network initialize if the network status
+      is NETWORK_INIT */
+   //if( NETWORK_INIT == g_networkStatus )
+   {
+       networConfigkStart();
+   }
+
+#ifdef DEVICE_TYPE_COOR
+   //t_addrType dstaddr;
+   //dstaddr.addrMode = broadcastAddr;
+   //dstaddr.addr.m_dstShortAddr = 0x51CF;
+   //loraDeleteDevice( &dstaddr );
+   //allowJoinNetwork(120000);
+#endif
     while(1)
     {
         eventId = 0;
@@ -210,5 +229,8 @@ void setNetworkStatus( E_nwkStatus a_status )
 {
     g_networkStatus = a_status;
 }
+
+
+
 
 /****************************************************** END OF FILE ******************************************************/

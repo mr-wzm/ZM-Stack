@@ -56,7 +56,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */     
-
+#include "loraConfig.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -136,9 +136,14 @@ void StartDefaultTask(void const * argument)
 {
 
   /* USER CODE BEGIN StartDefaultTask */
+    uint32_t eventId = 0;
   /* Infinite loop */
   for(;;)
   {
+   
+   eventId = 0;
+   /* wait task notify */
+   xTaskNotifyWait( (uint32_t)0, ULONG_MAX, &eventId, portMAX_DELAY );
     osDelay(1);
   }
   /* USER CODE END StartDefaultTask */
