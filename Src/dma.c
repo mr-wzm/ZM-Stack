@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : IWDG.c
+  * File Name          : dma.c
   * Description        : This file provides code for the configuration
-  *                      of the IWDG instances.
+  *                      of all the requested memory to memory DMA transfers.
   ******************************************************************************
   * This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -46,53 +46,39 @@
   *
   ******************************************************************************
   */
-
 /* Includes ------------------------------------------------------------------*/
-#include "iwdg.h"
+#include "dma.h"
 
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
 
-/* IWDG init function */
-void MX_IWDG_Init(void)
-{
-
-  LL_IWDG_Enable(IWDG);
-
-  LL_IWDG_EnableWriteAccess(IWDG);
-
-  LL_IWDG_SetPrescaler(IWDG, LL_IWDG_PRESCALER_32);
-
-  LL_IWDG_SetWindow(IWDG, 4095);
-
-  LL_IWDG_SetReloadCounter(IWDG, 2000);
-
-  while (LL_IWDG_IsReady(IWDG) != 1)
-  {
-  }
-
-  LL_IWDG_ReloadCounter(IWDG);
-
-}
+/*----------------------------------------------------------------------------*/
+/* Configure DMA                                                              */
+/*----------------------------------------------------------------------------*/
 
 /* USER CODE BEGIN 1 */
-/*****************************************************************
-* DESCRIPTION: systemFeedDog
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void systemFeedDog( void )
-{
-    LL_IWDG_ReloadCounter(IWDG);
-}
 
 /* USER CODE END 1 */
+
+/** 
+  * Enable DMA controller clock
+  */
+void MX_DMA_Init(void) 
+{
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel2_3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_3_IRQn, 3, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
+
+}
+
+/* USER CODE BEGIN 2 */
+
+/* USER CODE END 2 */
 
 /**
   * @}

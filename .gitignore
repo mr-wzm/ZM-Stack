@@ -9,3 +9,5 @@ EWARM/*
 
 # 忽略 settings 文件夹
 settings/*
+
+.vscode

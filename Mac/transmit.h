@@ -27,13 +27,15 @@ extern "C"
  *                                                        MACROS                                                         *
  *************************************************************************************************************************/    
 /* BE */
-#define MAC_MIN_BE                  4
+#define MAC_MIN_BE                  3
 #define MAC_MAX_BE                  6
 /* NB */
 #define MAC_MIN_NB                  0
 #define MAC_MAX_NB                  5
 /* CW */
-#define MAC_VALUE_CW                2
+#define MAC_VALUE_CW                1//2
+/* Pre transmission number*/
+#define PRE_TRANSMIT_NUM            2
 /* Retransmit number */
 #define MAC_RETRANSMIT_NUM          10
 /* Num of broadcast times */
@@ -68,12 +70,22 @@ typedef enum
     JOIN_REQUEST_ORDER,
     JOIN_RESPONSE_ORDER,
     ANNONCE_ORDER,
+    ANNONCE_COLLISION_ORDER,
+    LEAVE_REQUEST_ORDER,
     LEAVE_ORDER,
     //RTS_ORDER,
     //CTS_ORDER,
 }E_cmdType;
 
-
+/*
+ * Transmit type.
+ */
+typedef enum
+{
+    NO_TRANS = 0,
+    T_TRANSMIT,
+    T_RETRANSMIT,
+}E_transmitType;
 
 /*
  * Addr type
@@ -96,7 +108,7 @@ typedef struct
     uint8_t     NB;
     uint8_t     CW;
     uint8_t     BE;
-    uint8_t     retransmit;
+    //uint8_t     retransmit;
 }t_macCsmaParm;
 
 /*
@@ -144,6 +156,7 @@ typedef struct
     t_addrType      m_dstAddr;
     E_cmdType       m_cmdType;
     t_addrType      m_srcAddr;
+    bool            m_lowPower;
     uint8_t         m_keyNum;
     uint8_t         m_securityKey[SECURITY_KEY_LEN];
 }t_joinRequestPacket;
@@ -158,7 +171,9 @@ typedef struct
     E_cmdType       m_cmdType;
     uint16_t        m_srcAddr;
     bool            m_joinSuccess;
+#ifdef SELF_ORGANIZING_NETWORK
     uint16_t        m_shortAddr;
+#endif
 }t_joinResponsePacket;
     
 /*
@@ -169,7 +184,7 @@ typedef struct
     uint16_t        m_panId;
     t_addrType      m_dstAddr;
     E_cmdType       m_cmdType;
-    t_addrType      m_srcAddr;
+    uint16_t        m_srcAddr;
     uint16_t        m_shortAddr;
 }t_annoncePacket;
 
@@ -216,6 +231,7 @@ typedef struct
 typedef struct T_transmitQueue
 {
     struct T_transmitQueue      *m_next;
+    uint8_t                      m_retransmit;
     t_transmitPacket             m_transmitPacket;
 }t_transmitQueue;
 /*************************************************************************************************************************
@@ -258,7 +274,18 @@ E_cmdType transmitRx( t_transmitPacket *a_packet );
 * NOTE:
 *     null
 *****************************************************************/
-t_transmitQueue * getTransmitPacket( void );
+t_transmitQueue * getTransmitHeadPacket( void );
+/*****************************************************************
+* DESCRIPTION: getRetransmitCurrentPacket
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+t_transmitQueue * getRetransmitCurrentPacket( void );
 /*****************************************************************
 * DESCRIPTION: transmitSendData
 *     
@@ -269,7 +296,29 @@ t_transmitQueue * getTransmitPacket( void );
 * NOTE:
 *     null
 *****************************************************************/
-void transmitSendData( void );
+E_transmitType transmitSendData( void );
+/*****************************************************************
+* DESCRIPTION: setTransmitType
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void setTransmitType( E_transmitType a_type );
+/*****************************************************************
+* DESCRIPTION: transmitRetransmit
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void transmitRetransmit( E_transmitType a_transmitType );
 /*****************************************************************
 * DESCRIPTION: transmitSendCommand
 *     
@@ -293,6 +342,28 @@ bool transmitSendCommand( void );
 *****************************************************************/
 void transmitFreeHeadData( void );
 /*****************************************************************
+* DESCRIPTION: retransmitFreeCurrentPacket
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void retransmitFreePacket( t_transmitQueue *a_transmitFree );
+/*****************************************************************
+* DESCRIPTION: scanBeaconMessage
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void scanBeaconMessage( TaskHandle_t a_notifyTask );
+/*****************************************************************
 * DESCRIPTION: sensingBeaconMessage
 *     
 * INPUTS:
@@ -315,7 +386,7 @@ void scanBeaconMessage( TaskHandle_t a_notifyTask );
 *****************************************************************/
 uint8_t getAvoidtime( void );
 /*****************************************************************
-* DESCRIPTION: transmitRtsTx
+* DESCRIPTION: checkTransmitQueue
 *     
 * INPUTS:
 *     
@@ -324,18 +395,7 @@ uint8_t getAvoidtime( void );
 * NOTE:
 *     null
 *****************************************************************/
-void transmitRtsTx( void );
-/*****************************************************************
-* DESCRIPTION: transmitCtsTx
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void transmitCtsTx( uint8_t a_dstAddr, uint16_t a_duration );
+void checkTransmitQueue( void );
 /*****************************************************************
 * DESCRIPTION: transmitBeacon
 *     
@@ -358,6 +418,17 @@ void transmitBeacon( void );
 *     null
 *****************************************************************/
 void transmitJoinRequest( void );
+/*****************************************************************
+* DESCRIPTION: loraDeviceExitNetwork
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void loraDeviceExitNetwork( void );
 /*****************************************************************
 * DESCRIPTION: transmitLeave
 *     

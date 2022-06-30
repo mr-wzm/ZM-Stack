@@ -37,12 +37,28 @@
 #include "cmsis_os.h"
 
 /* USER CODE BEGIN 0 */
+/*************************************************************************************************************************
+ *                                                       INCLUDES                                                        *
+ *************************************************************************************************************************/
 #include "loraConfig.h"
+#include "network.h"
 #include "OStask.h"
+#include "zigbee.h"
 #include "lora.h"
+/*************************************************************************************************************************
+ *                                                  EXTERNAL VARIABLES                                                   *
+ *************************************************************************************************************************/
+#ifdef SYSTEM_LOW_POWER_STOP
+extern bool rtcWakeUpActive;
+
+extern void sysCompleteTick( void );
+#endif
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern RTC_HandleTypeDef hrtc;
+extern DMA_HandleTypeDef hdma_usart4_rx;
+extern DMA_HandleTypeDef hdma_usart4_tx;
 extern UART_HandleTypeDef huart4;
 
 /******************************************************************************/
@@ -88,7 +104,7 @@ void HardFault_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-    //HAL_IncTick();
+    
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   osSystickHandler();
@@ -103,6 +119,40 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32l0xx.s).                    */
 /******************************************************************************/
+
+/**
+* @brief This function handles RTC global interrupt through EXTI lines 17, 19 and 20 and LSE CSS interrupt through EXTI line 19.
+*/
+void RTC_IRQHandler(void)
+{
+  /* USER CODE BEGIN RTC_IRQn 0 */
+    if(__HAL_RTC_WAKEUPTIMER_GET_FLAG(&hrtc, RTC_FLAG_WUTF) != RESET)
+    {
+        __HAL_RTC_WAKEUPTIMER_CLEAR_FLAG(&hrtc, RTC_FLAG_WUTF);
+    }
+    if( __HAL_RTC_WAKEUPTIMER_EXTI_GET_FLAG() )
+    {
+        __HAL_RTC_WAKEUPTIMER_EXTI_CLEAR_FLAG();
+
+        HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+#ifdef SYSTEM_LOW_POWER_STOP
+        if(rtcWakeUpActive == true)
+        {
+            rtcWakeUpActive = false;
+            sysCompleteTick();
+        }
+        else
+        {
+            rtcWakeUpActive = true;
+        }
+#endif
+    }
+  /* USER CODE END RTC_IRQn 0 */
+  HAL_RTC_AlarmIRQHandler(&hrtc);
+  /* USER CODE BEGIN RTC_IRQn 1 */
+
+  /* USER CODE END RTC_IRQn 1 */
+}
 
 /**
 * @brief This function handles EXTI line 4 to 15 interrupts.
@@ -122,9 +172,25 @@ void EXTI4_15_IRQHandler(void)
   }
   /* USER CODE BEGIN EXTI4_15_IRQn 1 */
    
-  //vTaskNotifyGiveFromISR( loraTaskHandle, NULL );
-   
   /* USER CODE END EXTI4_15_IRQn 1 */
+}
+
+/**
+* @brief This function handles DMA1 channel 2 and channel 3 interrupts.
+*/
+void DMA1_Channel2_3_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel2_3_IRQn 0 */
+  if(__HAL_DMA_GET_FLAG(&hdma_usart4_tx, __HAL_DMA_GET_TC_FLAG_INDEX(&hdma_usart4_tx)))
+  {
+      uartDmaSendDone();
+  }
+  /* USER CODE END DMA1_Channel2_3_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_usart4_rx);
+  HAL_DMA_IRQHandler(&hdma_usart4_tx);
+  /* USER CODE BEGIN DMA1_Channel2_3_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel2_3_IRQn 1 */
 }
 
 /**
@@ -133,9 +199,15 @@ void EXTI4_15_IRQHandler(void)
 void USART4_5_IRQHandler(void)
 {
   /* USER CODE BEGIN USART4_5_IRQn 0 */
-
-    HAL_UART_IRQHandler( &huart4 );
-    
+  if( __HAL_UART_GET_IT(&huart4, UART_IT_IDLE) )
+  {
+      /* Stop dma transmit */
+      HAL_UART_DMAStop(&huart4);
+      /* Send notify to task */
+      xTaskNotify( networkTaskHandle, NETWORK_NOFITY_UART_RX_DONE, eSetBits );
+      /* Clear IDLE interrupt flag */
+      __HAL_UART_CLEAR_IT(&huart4, UART_FLAG_IDLE);
+  }
   /* USER CODE END USART4_5_IRQn 0 */
   HAL_UART_IRQHandler(&huart4);
   /* USER CODE BEGIN USART4_5_IRQn 1 */

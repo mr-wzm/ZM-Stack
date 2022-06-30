@@ -62,7 +62,7 @@
 /* USER CODE END Includes */
 
 /* USER CODE BEGIN Private defines */
-#define FEED_DOG_TIME           50
+#define FEED_DOG_TIME           1000
 /* USER CODE END Private defines */
 
 extern void _Error_Handler(char *, int);

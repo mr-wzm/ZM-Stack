@@ -27,11 +27,6 @@ extern "C"
  *                                                        MACROS                                                         *
  *************************************************************************************************************************/
 #define EEPROM_ADDR_STEP            4
-
-/* 
- * eeprom save addr 0x0000--0x0FFF 
- */
-#define NETWORK_ATTRIBUTE_ADDR      0x0000
 /*************************************************************************************************************************
  *                                                      CONSTANTS                                                        *
  *************************************************************************************************************************/
@@ -78,7 +73,8 @@ E_typeErr flashWriteData( uint16_t a_addr, uint8_t *a_data, uint8_t a_size );
 * OUTPUTS:
 *     E_typeErr
 * NOTE:
-*     擦除的地址必须为4的倍数，一次擦除4个字节
+*     The erased address must be a multiple of 4 and 
+*     erasing 4 bytes at a time.
 *****************************************************************/
 E_typeErr flashEraseData( uint16_t a_addr, uint8_t a_size );
  

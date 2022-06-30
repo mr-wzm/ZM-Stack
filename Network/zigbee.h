@@ -1,51 +1,36 @@
 /*****************************************************************
-* Copyright (C) 2017 60Plus Technology Co.,Ltd.*
+* Copyright (C) 2019 60Plus Technology Co.,Ltd.*
 ******************************************************************
-* lora.h
+* zigbee.h
 *
 * DESCRIPTION:
-*     Lora task
+*     Communication with zigbee
 * AUTHOR:
 *     Ziming
 * CREATED DATE:
-*     2018/12/20
+*     2019/4/2
 * REVISION:
 *     v0.1
 *
 * MODIFICATION HISTORY
 * --------------------
 * $Log:$
+* <author>  <time>      <version >  <desc>
+* Ziming      2019/4/2   v0.1        Created this file.
 *
 *****************************************************************/
-#ifndef LORA_H
-#define LORA_H
+#ifndef ZIGBEE_H
+#define ZIGBEE_H
+ 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+ 
 /*************************************************************************************************************************
  *                                                        MACROS                                                         *
  *************************************************************************************************************************/
-
-/* Lora task priority. */
-#define LORA_TASK_PRIORITY          5
-/* Lora task depth. */
-#define LORA_TASK_DEPTH             512
-    
-
-
-/******************* Lora Task Notify Events **********************/
-/**
- * Min :BV(0)
- * Max :BV(31)
- */
-#define LORA_NOTIFY_TRANSMIT_START                  BV(0)
-#define LORA_NOTIFY_TRANSMIT_DONE                   BV(1)
-#define LORA_NOTIFY_TRANSMIT_TIMEOUT                BV(2)
-#define LORA_NOTIFY_TRANSMIT_COMMAND                BV(3)
-#define LORA_NOTIFY_TRANSMIT_JOIN_REQUEST           BV(4)
-#define LORA_NOTIFY_TRANSMIT_BEACON                 BV(5)
-#define LORA_NOTIFY_SET_PANID                       BV(6)
+ 
 /*************************************************************************************************************************
  *                                                      CONSTANTS                                                        *
  *************************************************************************************************************************/
@@ -53,40 +38,29 @@ extern "C"
 /*************************************************************************************************************************
  *                                                       TYPEDEFS                                                        *
  *************************************************************************************************************************/
-
 /*
- * Channel status.
- */
-typedef struct
+ *
+ */    
+typedef enum
 {
-    bool        m_cts;
-    bool        m_rts;
-    uint16_t    m_linkAddr;
-}t_channelStatus;
-
-
-/*************************************************************************************************************************
- *                                                  EXTERNAL VARIABLES                                                   *
- *************************************************************************************************************************/
-extern TaskHandle_t                 loraTaskHandle;
-extern t_channelStatus              channelStatus;
+    UART_IDLE = 0,
+    UART_RX,
+    UART_TX,
+}E_zigbeeUartStatus;
+/*
+ *
+ */    
+typedef struct T_zigbeeUartStruct
+{
+    bool                        m_uartBusy;
+    uint16_t                    m_dataSize;
+    uint8_t                     m_data[LORA_BUFFER_SIZE_MAX];
+}t_zigbeeUartStruct;
 /*************************************************************************************************************************
  *                                                   PUBLIC FUNCTIONS                                                    *
  *************************************************************************************************************************/
- 
 /*****************************************************************
-* DESCRIPTION: loraInit
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     Initialize lora
-*****************************************************************/
-void loraInit( void );
-/*****************************************************************
-* DESCRIPTION: loraProcess
+* DESCRIPTION: zigbeeUartInit
 *     
 * INPUTS:
 *     
@@ -95,9 +69,9 @@ void loraInit( void );
 * NOTE:
 *     null
 *****************************************************************/
-void loraProcess( void *parm );
+void zigbeeUartInit( void );
 /*****************************************************************
-* DESCRIPTION: loraEnterLowPower
+* DESCRIPTION: zigbeeUartStartReceive
 *     
 * INPUTS:
 *     
@@ -106,9 +80,9 @@ void loraProcess( void *parm );
 * NOTE:
 *     null
 *****************************************************************/
-void loraEnterLowPower( void );
+E_typeErr zigbeeUartStartReceive( void );
 /*****************************************************************
-* DESCRIPTION: sensingChannel
+* DESCRIPTION: zigbeeUartSend
 *     
 * INPUTS:
 *     
@@ -117,9 +91,31 @@ void loraEnterLowPower( void );
 * NOTE:
 *     null
 *****************************************************************/
-void detectionChannel( TaskHandle_t a_notifyTask );
-
+E_typeErr zigbeeUartSend( uint8_t *a_data, uint16_t a_size );
+/*****************************************************************
+* DESCRIPTION: uartDmaSendDone
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void uartDmaSendDone( void );
+/*****************************************************************
+* DESCRIPTION: uartReceiveDone
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void uartReceiveDone( void );
 #ifdef __cplusplus
 }
 #endif
-#endif /* lora.h */
+ 
+#endif /* zigbee.h */

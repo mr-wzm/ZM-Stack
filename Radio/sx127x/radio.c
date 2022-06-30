@@ -36,7 +36,7 @@ tRadioDriver RadioDriver;
 
 tRadioDriver* RadioDriverInit( void )
 {
-#if defined( USE_SX1232_RADIO )
+#if defined( USE_SX1232_RADIO )                 
     RadioDriver.Init = SX1232Init;
     RadioDriver.Reset = SX1232Reset;
     RadioDriver.StartRx = SX1232StartRx;

@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : IWDG.c
+  * File Name          : RTC.h
   * Description        : This file provides code for the configuration
-  *                      of the IWDG instances.
+  *                      of the RTC instances.
   ******************************************************************************
   * This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -46,53 +46,39 @@
   *
   ******************************************************************************
   */
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __rtc_H
+#define __rtc_H
+#ifdef __cplusplus
+ extern "C" {
+#endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "iwdg.h"
+#include "stm32l0xx_hal.h"
+#include "main.h"
 
-/* USER CODE BEGIN 0 */
+/* USER CODE BEGIN Includes */
 
-/* USER CODE END 0 */
+/* USER CODE END Includes */
 
-/* IWDG init function */
-void MX_IWDG_Init(void)
-{
+extern RTC_HandleTypeDef hrtc;
 
-  LL_IWDG_Enable(IWDG);
+/* USER CODE BEGIN Private defines */
 
-  LL_IWDG_EnableWriteAccess(IWDG);
+/* USER CODE END Private defines */
 
-  LL_IWDG_SetPrescaler(IWDG, LL_IWDG_PRESCALER_32);
+extern void _Error_Handler(char *, int);
 
-  LL_IWDG_SetWindow(IWDG, 4095);
+void MX_RTC_Init(void);
 
-  LL_IWDG_SetReloadCounter(IWDG, 2000);
+/* USER CODE BEGIN Prototypes */
 
-  while (LL_IWDG_IsReady(IWDG) != 1)
-  {
-  }
+/* USER CODE END Prototypes */
 
-  LL_IWDG_ReloadCounter(IWDG);
-
+#ifdef __cplusplus
 }
-
-/* USER CODE BEGIN 1 */
-/*****************************************************************
-* DESCRIPTION: systemFeedDog
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void systemFeedDog( void )
-{
-    LL_IWDG_ReloadCounter(IWDG);
-}
-
-/* USER CODE END 1 */
+#endif
+#endif /*__ rtc_H */
 
 /**
   * @}

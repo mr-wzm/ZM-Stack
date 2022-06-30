@@ -1,77 +1,75 @@
 /*****************************************************************
-* Copyright (C) 2017 60Plus Technology Co.,Ltd.*
+* Copyright (C) 2019 60Plus Technology Co.,Ltd.*
 ******************************************************************
-* Network.c
+* zigbee.c
 *
 * DESCRIPTION:
-*     Lora network process
+*     Communication with zigbee
 * AUTHOR:
 *     Ziming
 * CREATED DATE:
-*     2018/11/27
+*     2019/4/2
 * REVISION:
 *     v0.1
 *
 * MODIFICATION HISTORY
 * --------------------
 * $Log:$
+* <author>  <time>      <version >  <desc>
+* Ziming      2019/4/2   v0.1        Created this file.
 *
 *****************************************************************/
+ 
 /*************************************************************************************************************************
  *                                                       INCLUDES                                                        *
  *************************************************************************************************************************/
 #include "loraConfig.h"
-#include "gpio.h"
-#include "attribute.h"
-#include "OS_timers.h"
-#include "NwkConfig.h"
+#include <string.h>
+#include "network.h"
 #include "transmit.h"
-#include "lora.h"
+#include "attribute.h"
 #include "zigbee.h"
-#include "lora_driver.h"
-#include "Network.h"
+#include "usart.h"
+#include "dma.h"
 /*************************************************************************************************************************
  *                                                        MACROS                                                         *
  *************************************************************************************************************************/
-
+ 
 /*************************************************************************************************************************
  *                                                      CONSTANTS                                                        *
  *************************************************************************************************************************/
-
+ 
 /*************************************************************************************************************************
  *                                                       TYPEDEFS                                                        *
  *************************************************************************************************************************/
-
+ 
 /*************************************************************************************************************************
  *                                                   GLOBAL VARIABLES                                                    *
  *************************************************************************************************************************/
-static E_nwkStatus          g_networkStatus = NETWORK_HOLD;
+static t_zigbeeUartStruct       g_uartDmaIndex;
 /*************************************************************************************************************************
  *                                                  EXTERNAL VARIABLES                                                   *
  *************************************************************************************************************************/
-
-/* 
- * network process task handle.
- */
-TaskHandle_t                    networkTaskHandle;
+extern DMA_HandleTypeDef hdma_usart4_rx;
 /*************************************************************************************************************************
  *                                                    LOCAL VARIABLES                                                    *
  *************************************************************************************************************************/
-     
+ 
 /*************************************************************************************************************************
  *                                                 FUNCTION DECLARATIONS                                                 *
  *************************************************************************************************************************/
-
+ 
 /*************************************************************************************************************************
  *                                                   PUBLIC FUNCTIONS                                                    *
  *************************************************************************************************************************/
-
+ 
 /*************************************************************************************************************************
  *                                                    LOCAL FUNCTIONS                                                    *
  *************************************************************************************************************************/
+ 
 
 /*****************************************************************
-* DESCRIPTION: networkInit
+* DESCRIPTION: zigbeeUartInit
 *     
 * INPUTS:
 *     
@@ -80,157 +78,128 @@ TaskHandle_t                    networkTaskHandle;
 * NOTE:
 *     null
 *****************************************************************/
-void networkInit( void )
+void zigbeeUartInit( void )
 {
-    initEEP();
+    g_uartDmaIndex.m_uartBusy = false;
+    /* Clear IDLE interrupt flag, Prevents an interrupt 
+       from entering after initialization */
+    __HAL_UART_CLEAR_IT(&huart4, UART_FLAG_IDLE);
+    /* Open uart rx */
+    zigbeeUartStartReceive();
+}
+
+/*****************************************************************
+* DESCRIPTION: zigbeeUartStartReceive
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+E_typeErr zigbeeUartStartReceive( void )
+{
+    if( g_uartDmaIndex.m_uartBusy == true )
+    {
+        /* Uart dma is busy */
+        return E_ERR;
+    }
+    /* Initialization data buffer */
+    memset(g_uartDmaIndex.m_data, 0, LORA_BUFFER_SIZE_MAX);
+    /* Open uart dma receive */
+    HAL_UART_Receive_DMA(&huart4, g_uartDmaIndex.m_data, LORA_BUFFER_SIZE_MAX);
+    /* Enable uart IDLE interrupt */
+    __HAL_UART_ENABLE_IT(&huart4, UART_IT_IDLE);
+    /* Disable dma receive channel TC interrupt */
+    __HAL_DMA_DISABLE_IT(&hdma_usart4_rx, DMA_IT_TC);
+    /* Disable dma receive channel HT interrupt */
+    __HAL_DMA_DISABLE_IT(&hdma_usart4_rx, DMA_IT_HT);
     
-#ifdef DEVICE_TYPE_COOR
-    g_networkStatus = NETWORK_INIT;
-    setNetworkIdentity(nwkIdentityCoor);
-#else
-    setNetworkIdentity(nwkIdentityDevice);
-#endif
-    if( nwkAttribute.m_nwkStatus == true &&
-        nwkAttribute.m_panId != 0x0000 )
+    return E_SUCCESS;
+}
+
+/*****************************************************************
+* DESCRIPTION: zigbeeUartSend
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+E_typeErr zigbeeUartSend( uint8_t *a_data, uint16_t a_size )
+{
+    if( g_uartDmaIndex.m_uartBusy || a_data == NULL || a_size == 0 || a_size > LORA_BUFFER_SIZE_MAX )
     {
-        if( nwkAttribute.m_shortAddr != 0x0000 )
+        return E_ERR;
+    }
+    g_uartDmaIndex.m_uartBusy = true;
+    g_uartDmaIndex.m_dataSize = a_size;
+    memcpy( g_uartDmaIndex.m_data, a_data, g_uartDmaIndex.m_dataSize );
+    HAL_UART_Transmit_DMA(&huart4, g_uartDmaIndex.m_data, g_uartDmaIndex.m_dataSize);
+    return E_SUCCESS;
+}
+
+/*****************************************************************
+* DESCRIPTION: uartDmaSendDone
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void uartDmaSendDone( void )
+{
+    g_uartDmaIndex.m_uartBusy = false;
+    /* Stop dma transmit */
+    HAL_UART_DMAStop(&huart4);
+    /* Switch to receive mode */
+    zigbeeUartStartReceive();
+}
+
+/*****************************************************************
+* DESCRIPTION: uartReceiveDone
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void uartReceiveDone( void )
+{
+    t_addrType dstAddr;
+    static uint8_t sendDst = 0;
+    t_deviceList *deviceListNode = deviceList;
+    /* Get data size */
+    g_uartDmaIndex.m_dataSize = (LORA_BUFFER_SIZE_MAX - __HAL_DMA_GET_COUNTER(&hdma_usart4_rx));
+    
+    dstAddr.addrMode = pointAddr16Bit;
+    if( nwkAttribute.m_shortAddr == 0x0000 )
+    {
+#ifdef DEVICE_TYPE_COOR
+        //dstAddr.addr.m_dstShortAddr = 0xE086;//0x0923;
+        for( uint8_t cnt = 0; cnt < sendDst; cnt++ )
         {
-            g_networkStatus = NETWORK_DEVICE;
+            deviceListNode = deviceListNode->m_next;
         }
+        dstAddr.addr.m_dstShortAddr = deviceListNode->m_shortAddr;
+        if (sendDst == nwkAttribute.m_deviceNum)
+            sendDst = 0;
         else
-        {
-            g_networkStatus = NETWORK_COOR;
-        }
-#if configUSE_TICKLESS_IDLE == 1
-        loraSetFrequency( LORA_FREQUENCY_MAX );
-        loraSetPreambleLength(LORA_PREAMBLE_LENGTH_LP);
-#else
-        loraSetFrequency( LORA_FREQUENCY_MIN + LORA_FREQUENCY_STEP*nwkAttribute.m_channelNum );
-        loraSetPreambleLength(LORA_PREAMBLE_LENGTH);
+            sendDst = sendDst%nwkAttribute.m_deviceNum + 1;
 #endif
     }
+    else
+       dstAddr.addr.m_dstShortAddr = 0x0000; 
+    transmitTx( &dstAddr, g_uartDmaIndex.m_dataSize, g_uartDmaIndex.m_data );
+    
+    zigbeeUartStartReceive();
 }
-
-/*****************************************************************
-* DESCRIPTION: networkProcess
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void networkProcess( void *parm )
-{
-   uint32_t eventId = 0;
-   
-   /* Open uart connect zigbee */
-   zigbeeUartInit();
-   /* Network initialize if the network status
-      is NETWORK_INIT */
-   //if( NETWORK_INIT == g_networkStatus )
-   {
-       networConfigkStart();
-   }
-
-#ifdef DEVICE_TYPE_COOR
-   //t_addrType dstaddr;
-   //dstaddr.addrMode = broadcastAddr;
-   //dstaddr.addr.m_dstShortAddr = 0x51CF;
-   //loraDeleteDevice( &dstaddr );
-   //allowJoinNetwork(120000);
-#endif
-    while(1)
-    {
-        eventId = 0;
-        /* wait task notify */
-        xTaskNotifyWait( (uint32_t)0, ULONG_MAX, &eventId, portMAX_DELAY );
-        /* Lora init network start */
-        if( (eventId & NETWORK_NOFITY_INIT_START) == NETWORK_NOFITY_INIT_START )
-        {
-            static bool createLock = false;
-            
-            if( createLock == false && nwkAttribute.m_nwkStatus == false )
-            {
-                taskENTER_CRITICAL();           //Enter the critical area
-                /* Create network task */
-                if(xTaskCreate( nwkConfigProcess,
-                               "nwkConfigProcess",
-                                NWKCONFIG_TASK_DEPTH,
-                                NULL, NWKCONFIG_TASK_PRIORITY,
-                                &nwkConfigTaskHandle ) == pdPASS)
-                {
-                    /* Create task success */
-                    createLock = true;
-                }
-                else
-                {
-                    /* Create task faild */
-                    xTaskNotify( networkTaskHandle, NETWORK_NOFITY_INIT_START, eSetBits );
-                }
-                taskEXIT_CRITICAL();            //Exit the critical area
-            }
-            /* Clear the event flag */
-            eventId ^= NETWORK_NOFITY_INIT_START;
-        }
-        /* Lora init network success */
-        else if( (eventId & NETWORK_NOFITY_INIT_SUCCESS) == NETWORK_NOFITY_INIT_SUCCESS )
-        {
-            taskENTER_CRITICAL();           //Enter the critical area
-            /* Delete the task */
-            vTaskDelete(nwkConfigTaskHandle);
-            taskEXIT_CRITICAL();            //Exit the critical area
-            /* Clear the event flag */
-            eventId ^= NETWORK_NOFITY_INIT_SUCCESS;
-        }
-        /* Uart receive done */
-        else if( (eventId & NETWORK_NOFITY_UART_RX_DONE) == NETWORK_NOFITY_UART_RX_DONE )
-        {
-            uartReceiveDone();
-            /* Clear the event flag */
-            eventId ^= NETWORK_NOFITY_UART_RX_DONE;
-        }
-        /* Returns the untreated event */
-        if( eventId )
-        {
-            xTaskNotify( networkTaskHandle, eventId, eSetBits );
-        }
-        taskYIELD();
-    }
-}
-
-/*****************************************************************
-* DESCRIPTION: getNetworkStatus
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-E_nwkStatus getNetworkStatus( void )
-{
-    return g_networkStatus;
-}
-
-/*****************************************************************
-* DESCRIPTION: setNetworkStatus
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-void setNetworkStatus( E_nwkStatus a_status )
-{
-    g_networkStatus = a_status;
-}
-
-
-
 
 /****************************************************** END OF FILE ******************************************************/

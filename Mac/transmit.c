@@ -49,6 +49,8 @@
  *************************************************************************************************************************/
 /* Number of data message queues */
 static uint8_t                  g_queueCount  = 0;
+/* Number of data message retransmit queues */
+static uint8_t                  g_retransmitQueueCount = 0;
 /* Number of command message queues */
 static uint8_t                  g_commandQueueCount = 0;
 /* Message transmit ID */
@@ -59,6 +61,10 @@ static TaskHandle_t             notifyTask = NULL;
 static t_transmitQueue          *transmitHead = NULL;
 /* Data message queues end */
 static t_transmitQueue          *transmitEnd  = NULL;
+/* Data message queue retransmit head */
+static t_transmitQueue          *retransmitHead = NULL;
+/* Data message queue retransmit send current node */
+static t_transmitQueue          *retransmitCurrent = NULL;
 /* Command message queues head */
 static t_transmitCommandQueue   *transmitCommandHead = NULL;
 /* Command message queues end */
@@ -78,12 +84,12 @@ t_macCsmaParm                macPIB;
 /*************************************************************************************************************************
  *                                                 FUNCTION DECLARATIONS                                                 *
  *************************************************************************************************************************/
-static int      getRand( void );
-static void     checkTransmitQueue( void );
+static void     retransmitCurrentPointNext( void );
 static void     addTransmitCommandQueue( t_transmitCommandQueue *transmitCommandNode );
-static void     transmitAck( uint16_t a_shortAddr, uint8_t a_transmitId );
+static void     transmitAck( uint16_t a_shortAddr, uint8_t a_transmitId ) __FUNCTION_POSSIBLE_UNUSED;
+static void     transmitLeaveRequest( void );
 static void     transmitLeave( t_addrType *a_dstAddr );
-static void     transmitJoinResponse( E_addrMode a_addrMode, uint8_t *a_dstAddr, bool a_joinSuccess );
+static void     transmitJoinResponse( t_addrType *a_dstAddr, bool a_joinSuccess, bool a_lowPower );
 static void     packetAck( t_ackPacket *a_packet );
 static void     packetBeacon( t_beaconPacket *a_packet );
 static void     packetJoinRequest( t_joinRequestPacket *a_packet );
@@ -101,15 +107,17 @@ static void     packetJoinResponse( t_joinResponsePacket *a_packet );
 * DESCRIPTION: transmitTx
 *     
 * INPUTS:
-*     
+*      a_dstAddr : Full ZB destination address: Nwk Addr.
+*      a_size : The size of the data.
+*      a_data : Data to be sent.
 * OUTPUTS:
-*     
+*     Add queue success or failure.
 * NOTE:
-*     null
+*     Add data in transmit queue.
 *****************************************************************/
 E_typeErr transmitTx( t_addrType *a_dstAddr, uint8_t a_size, uint8_t *a_data )
 {
-    if( a_size == 0 || a_data == NULL || g_queueCount >= 10 )
+    if( a_size == 0 || a_data == NULL || nwkAttribute.m_nwkStatus == false )
     {
         return E_ERR;
     }
@@ -141,14 +149,12 @@ E_typeErr transmitTx( t_addrType *a_dstAddr, uint8_t a_size, uint8_t *a_data )
         packetQueue->m_transmitPacket.m_size = a_size;
         memcpy( packetQueue->m_transmitPacket.m_data, a_data, a_size );
         packetQueue->m_transmitPacket.m_keyNum = dataEncrypt( packetQueue->m_transmitPacket.m_data, a_size );
+        packetQueue->m_retransmit = 0;
         packetQueue->m_next = NULL;
         /* Is data message queues empty */
         if( transmitHead == NULL && transmitEnd == NULL )
         {
-            macPIB.retransmit = 0;
             transmitHead = packetQueue;
-            /* Send notify to lora process */
-            xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
         }
         else
         {
@@ -158,13 +164,17 @@ E_typeErr transmitTx( t_addrType *a_dstAddr, uint8_t a_size, uint8_t *a_data )
         transmitEnd = packetQueue;
         /* Record queue number */
         g_queueCount++;
+        
+        setTransmitType(transmitSendData());
+        /* Send notify to lora process */
+        //xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
 
         return E_SUCCESS;
     }
     else
     {
         /* Failed to malloc, check if the queue is full */
-        checkTransmitQueue();   
+        checkTransmitQueue();
     }
     return E_ERR;
 }
@@ -173,11 +183,11 @@ E_typeErr transmitTx( t_addrType *a_dstAddr, uint8_t a_size, uint8_t *a_data )
 * DESCRIPTION: transmitRx
 *     
 * INPUTS:
-*     
+*     a_packet : Received packet.
 * OUTPUTS:
-*     
+*     The cmd type of the message.
 * NOTE:
-*     null
+*     Parse the received packet.
 *****************************************************************/
 E_cmdType transmitRx( t_transmitPacket *a_packet )
 {
@@ -201,10 +211,12 @@ E_cmdType transmitRx( t_transmitPacket *a_packet )
         {
         case DATA_ORDER:
             dataDecode( a_packet->m_keyNum, a_packet->m_data, a_packet->m_size );
+#ifndef SYSTEM_LOW_POWER_STOP
             if( a_packet->m_dstAddr.addrMode != broadcastAddr )
             {
                 transmitAck( a_packet->m_srcAddr, a_packet->m_transmitID );
             }
+#endif
             break;
         case ACK_ORDER:
             packetAck( (t_ackPacket *)a_packet );
@@ -224,16 +236,21 @@ E_cmdType transmitRx( t_transmitPacket *a_packet )
         case LEAVE_ORDER:
             leaveNetwork();
             break;
+        case LEAVE_REQUEST_ORDER:
+            deleteDevice(getDeviceAttWithShortAddr(((t_leavePacket *)a_packet)->m_srcAddr));
+            break;
         default:
             break;
         }
     }
+#ifdef SELF_ORGANIZING_NETWORK
     else if( !nwkAttribute.m_nwkStatus && 
              getNetworkStatus() == NETWORK_JOIN_SCAN && 
              a_packet->m_cmdType == BEACON_ORDER )
     {
         packetBeacon( (t_beaconPacket *)a_packet );
     }
+#endif
     return a_packet->m_cmdType;
 }
 
@@ -241,34 +258,135 @@ E_cmdType transmitRx( t_transmitPacket *a_packet )
 * DESCRIPTION: transmitSendData
 *     
 * INPUTS:
-*     
+*     NULL
 * OUTPUTS:
-*     
+*     Current send type(transmit or retransmit),the value is in
+*       E_transmitType enum.
 * NOTE:
-*     null
+*     Lora send message package,and return send type.
+*     If the transmit queue has packet,the first send is in transmit
+*     queue.
+*     Else send retransmitCurrent pointer point packet.
 *****************************************************************/
-void transmitSendData( void )
+E_transmitType transmitSendData( void )
 {
     loraEnterStandby();
-    /* Send message */
-    if( loraSendData( (uint8_t *)&transmitHead->m_transmitPacket, 
-                     sizeof(t_transmitPacket) + transmitHead->m_transmitPacket.m_size ) != E_SUCCESS )
+    if( transmitHead )
     {
+#ifdef DEVICE_TYPE_COOR
+        t_deviceList *deviceNode = getDeviceAttWithShortAddr(transmitHead->m_transmitPacket.m_dstAddr.addr.m_dstShortAddr);
+        if( deviceNode )
+        {
+            if( deviceNode->m_lowPowerDevice == true )
+            {
+                loraSetFrequency( LORA_FREQUENCY_MAX );
+                loraSetPreambleLength(LORA_PREAMBLE_LENGTH_LP);
+            }
+        }
+#endif
+        /* Send message */
+        if( loraSendData( (uint8_t *)&transmitHead->m_transmitPacket, 
+                         sizeof(t_transmitPacket) + transmitHead->m_transmitPacket.m_size ) != E_SUCCESS )
+        {
+            /* Send notify to lora process */
+            xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
+        }
+        else
+        {
+            return T_TRANSMIT;
+        }
+    }
+    else if( retransmitHead )
+    {
+        if( retransmitCurrent == NULL )
+        {
+            retransmitCurrent = retransmitHead;
+        }
+        /* Send message */
+        if( loraSendData( (uint8_t *)&retransmitCurrent->m_transmitPacket, 
+                         sizeof(t_transmitPacket) + retransmitCurrent->m_transmitPacket.m_size ) != E_SUCCESS )
+        {
+            /* Send notify to lora process */
+            xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
+        }
+        else
+        {
+            return T_RETRANSMIT;
+        }
+    }
+    return NO_TRANS;
+}
+
+/*****************************************************************
+* DESCRIPTION: transmitRetransmit
+*     
+* INPUTS:
+*     a_transmitType : Current send type(transmit or retransmit),
+*                      the value is in E_transmitType enum.
+* OUTPUTS:
+*     NULL
+* NOTE:
+*     If the input parameter is T_TRANSMIT, it is indicated as 
+*       transmit,and put it in retransmit queue( broadcast packet
+*       do not put in).
+*     If the input parameter is T_RETRANSMIT, it means the current
+*       transmission is a retransmission,and make the 
+*       retransmitCurrent pointer point next packet.
+*****************************************************************/
+void transmitRetransmit( E_transmitType a_transmitType )
+{
+    if( a_transmitType == T_TRANSMIT )
+    {
+        /* Do not retransmit broadcast packet */
+        if( transmitHead->m_transmitPacket.m_dstAddr.addrMode == broadcastAddr )
+        {
+            return;
+        }
+        if( retransmitHead == NULL )
+        {
+            retransmitHead = transmitHead;
+            transmitHead = transmitHead->m_next;
+            retransmitHead->m_next = NULL;
+            retransmitCurrent = retransmitHead;
+        }
+        else
+        {
+            t_transmitQueue *retransmitNode = retransmitHead;
+            while( retransmitNode->m_next )
+            {
+                retransmitNode = retransmitNode->m_next;
+            }
+            retransmitNode->m_next = transmitHead;
+            transmitHead = transmitHead->m_next;
+            retransmitNode->m_next->m_next = NULL;
+        }
+        if( transmitHead == NULL )
+        {
+            transmitEnd = NULL;
+        }
+        g_queueCount--;
+        g_retransmitQueueCount++;
         /* Send notify to lora process */
         xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
     }
+    else if( a_transmitType == T_RETRANSMIT )
+    {
+        retransmitCurrentPointNext();
+    }
 }
-
 
 /*****************************************************************
 * DESCRIPTION: transmitSendCommand
 *     
 * INPUTS:
-*     
+*     NULL
 * OUTPUTS:
-*     
+*     true : There are command packet need send and sended success.
+*     false: No have command packet need send.
 * NOTE:
-*     null
+*     Check if there are any command packages to send.
+*     And send the command package which in the transmitCommand 
+*     queue head.
 *****************************************************************/
 bool transmitSendCommand( void )
 {
@@ -329,11 +447,11 @@ bool transmitSendCommand( void )
 * DESCRIPTION: transmitFreeHeadData
 *     
 * INPUTS:
-*     
+*     NULL
 * OUTPUTS:
-*     
+*     NULL
 * NOTE:
-*     null
+*     Delete transmit head packet.
 *****************************************************************/
 void transmitFreeHeadData( void )
 {
@@ -368,13 +486,68 @@ void transmitFreeHeadData( void )
         /* Send notify to lora process */
         xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
     }
-    macPIB.retransmit = 0;
     /* Number of queues minus one */
     g_queueCount--;
+    /* Check if there are any messages that need to be sent */
+    checkTransmitQueue();
     /* Free sended success packet */
     vPortFree(transmitFree);
 }
 
+/*****************************************************************
+* DESCRIPTION: retransmitFreeCurrentPacket
+*     
+* INPUTS:
+*     a_transmitFree : Which packet needed delete.
+* OUTPUTS:
+*     NULL
+* NOTE:
+*     Delete packet in retransmit queue.
+*****************************************************************/
+void retransmitFreePacket( t_transmitQueue *a_transmitFree )
+{
+    t_transmitQueue *retransmitFree = a_transmitFree;
+    if( retransmitFree == NULL )
+    {
+        return;
+    }
+    if( retransmitFree == retransmitHead )
+    {
+        retransmitHead = retransmitHead->m_next;
+        if( retransmitCurrent == retransmitFree )
+        {
+            retransmitCurrentPointNext();
+        }
+        /* Free packet */
+        vPortFree(retransmitFree);
+        g_retransmitQueueCount--;
+    }
+    else
+    {
+        t_transmitQueue *retransmitNode = retransmitHead;
+        while( retransmitNode->m_next != retransmitFree && 
+              retransmitNode != NULL )
+        {
+            retransmitNode = retransmitNode->m_next;
+        }
+        if( retransmitNode )
+        {
+            retransmitNode->m_next = retransmitFree->m_next;
+            if( retransmitCurrent == retransmitFree )
+            {
+                retransmitCurrentPointNext();
+            }
+            /* Free packet */
+            vPortFree(retransmitFree);
+            g_retransmitQueueCount--;
+        }
+    }
+    if( transmitHead || retransmitHead )
+    {
+        /* Send notify to lora process */
+        xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
+    }
+}
 
 /*****************************************************************
 * DESCRIPTION: scanBeaconMessage
@@ -393,9 +566,8 @@ void scanBeaconMessage( TaskHandle_t a_notifyTask )
     loraReceiveData();
 }
 
-
 /*****************************************************************
-* DESCRIPTION: addTransmitQueue
+* DESCRIPTION: getTransmitHeadPacket
 *     
 * INPUTS:
 *     
@@ -404,25 +576,24 @@ void scanBeaconMessage( TaskHandle_t a_notifyTask )
 * NOTE:
 *     null
 *****************************************************************/
-void addTransmitQueue( t_transmitPacket *a_packet )
-{
-    
-}
-/*****************************************************************
-* DESCRIPTION: getTransmitPacket
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-t_transmitQueue * getTransmitPacket( void )
+t_transmitQueue * getTransmitHeadPacket( void )
 {
     return transmitHead;
 }
-
+/*****************************************************************
+* DESCRIPTION: getRetransmitCurrentPacket
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+t_transmitQueue * getRetransmitCurrentPacket( void )
+{
+    return retransmitCurrent;
+}
 /*****************************************************************
 * DESCRIPTION: getAvoidtime
 *     
@@ -445,44 +616,61 @@ uint8_t getAvoidtime( void )
 }
 
 /*****************************************************************
-* DESCRIPTION: getRand
-*     
-* INPUTS:
-*     
-* OUTPUTS:
-*     
-* NOTE:
-*     null
-*****************************************************************/
-static int getRand( void )
-{
-    srand(HAL_GetTick());
-    return rand();
-}
-
-/*****************************************************************
 * DESCRIPTION: checkTransmitQueue
-*     
+*     Check if there are any messages that need to be sent.
 * INPUTS:
-*     
+*     NULL
 * OUTPUTS:
-*     
+*     NULL
 * NOTE:
 *     null
 *****************************************************************/
-static void checkTransmitQueue( void )
+void checkTransmitQueue( void )
 {
     if( transmitCommandHead != NULL )
     {
-        /* Send notify to lora process */
+        /* Send command notify to lora process */
         xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_COMMAND, eSetBits );
     }
-    if( transmitHead != NULL )
+    else if( transmitHead != NULL || retransmitHead != NULL )
     {
-        /* Send notify to lora process */
+        /* Send transmit notify to lora process */
         xTaskNotify( loraTaskHandle, LORA_NOTIFY_TRANSMIT_START, eSetBits );
     }
+    else
+    {
+#if configUSE_TICKLESS_IDLE == 1
+        loraEnterLowPower();
+#else
+        loraReceiveData();
+#endif
+    }
 }
+
+
+/*****************************************************************
+* DESCRIPTION: retransmitCurrentPointNext
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+static void retransmitCurrentPointNext( void )
+{
+    if( retransmitCurrent->m_next )
+    {
+        retransmitCurrent = retransmitCurrent->m_next;
+    }
+    else
+    {
+        retransmitCurrent = retransmitHead;
+    }
+    checkTransmitQueue();
+}
+
 /*****************************************************************
 * DESCRIPTION: addTransmitCommandQueue
 *     
@@ -534,7 +722,7 @@ static void transmitAck( uint16_t a_dstAddr, uint8_t a_transmitId )
                 ((t_ackPacket *)transmitCommandFind->m_packet)->m_dstAddr.addr.m_dstShortAddr == a_dstAddr &&
                 ((t_ackPacket *)transmitCommandFind->m_packet)->m_transmitID == a_transmitId )
             {
-                //checkTransmitQueue();
+                checkTransmitQueue();
                 return;
             }
             transmitCommandFind = transmitCommandFind->m_next;
@@ -636,7 +824,12 @@ void transmitJoinRequest( void )
 #else
         joinRequestPacket->m_srcAddr.addrMode = pointAddr16Bit;
         joinRequestPacket->m_srcAddr.addr.m_dstShortAddr = nwkAttribute.m_shortAddr;
-#endif        
+#endif
+#if configUSE_TICKLESS_IDLE == 1
+        joinRequestPacket->m_lowPower = true;
+#else
+        joinRequestPacket->m_lowPower = false;
+#endif
         memcpy(joinRequestPacket->m_securityKey, securityKey, SECURITY_KEY_LEN );
         joinRequestPacket->m_keyNum = dataEncrypt( joinRequestPacket->m_securityKey, SECURITY_KEY_LEN );
         transmitCommandNode->m_size = sizeof(t_joinRequestPacket);
@@ -653,6 +846,25 @@ void transmitJoinRequest( void )
 }
 
 /*****************************************************************
+* DESCRIPTION: loraDeviceExitNetwork
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+void loraDeviceExitNetwork( void )
+{
+    for( uint8_t count = 0; count < BROADCAST_MAX_NUM; count++ )
+    {
+        transmitLeaveRequest();
+    }
+    startSingleTimer( LORA_DEVICE_EXIT_NWK_EVENT, 3000, leaveNetwork );
+}
+
+/*****************************************************************
 * DESCRIPTION: loraDeleteDevice
 *     
 * INPUTS:
@@ -664,9 +876,59 @@ void transmitJoinRequest( void )
 *****************************************************************/
 void loraDeleteDevice( t_addrType *a_dstAddr )
 {
-    for( uint8_t count = 0; count < BROADCAST_MAX_NUM; count++ )
+    if( getNetworkStatus() == NETWORK_COOR )
     {
-        transmitLeave(a_dstAddr);
+        if( a_dstAddr->addrMode == pointAddr16Bit )
+        {
+            deleteDevice(getDeviceAttWithShortAddr(a_dstAddr->addr.m_dstShortAddr));
+        }
+        else if( a_dstAddr->addrMode == pointAddr64Bit )
+        {
+            deleteDevice(getDeviceAttWithMac(a_dstAddr->addr.m_dstMacAddr));
+        }
+        for( uint8_t count = 0; count < BROADCAST_MAX_NUM; count++ )
+        {
+            transmitLeave(a_dstAddr);
+        } 
+    }
+}
+
+/*****************************************************************
+* DESCRIPTION: transmitLeaveRequest
+*     
+* INPUTS:
+*     
+* OUTPUTS:
+*     
+* NOTE:
+*     null
+*****************************************************************/
+static void transmitLeaveRequest( void )
+{
+    t_transmitCommandQueue *transmitCommandNode = (t_transmitCommandQueue *)pvPortMalloc(sizeof(t_transmitCommandQueue));
+    if( transmitCommandNode == NULL )
+    {
+        checkTransmitQueue();
+        return;
+    }
+    t_leavePacket *leaveRequestPacket = (t_leavePacket *)pvPortMalloc(sizeof(t_leavePacket));
+    if( leaveRequestPacket )
+    {
+        leaveRequestPacket->m_dstAddr.addrMode = pointAddr16Bit;
+        leaveRequestPacket->m_dstAddr.addr.m_dstShortAddr = 0x0000;
+        leaveRequestPacket->m_panId = nwkAttribute.m_panId;
+        leaveRequestPacket->m_srcAddr = nwkAttribute.m_shortAddr;
+        leaveRequestPacket->m_cmdType = LEAVE_REQUEST_ORDER;
+        transmitCommandNode->m_size = sizeof(t_leavePacket);
+        transmitCommandNode->m_packet = leaveRequestPacket;
+        transmitCommandNode->m_cmdType = leaveRequestPacket->m_cmdType;
+        transmitCommandNode->m_next = NULL;
+        addTransmitCommandQueue(transmitCommandNode);
+    }
+    else
+    {
+        vPortFree(leaveRequestPacket);
+        checkTransmitQueue();
     }
 }
 
@@ -733,9 +995,9 @@ static void transmitLeave( t_addrType *a_dstAddr )
 * NOTE:
 *     null
 *****************************************************************/
-static void transmitJoinResponse( E_addrMode a_addrMode, uint8_t *a_dstAddr, bool a_joinSuccess )
+static void transmitJoinResponse( t_addrType *a_dstAddr, bool a_joinSuccess, bool a_lowPower )
 {
-    if( a_addrMode == broadcastAddr )
+    if( a_dstAddr->addrMode == broadcastAddr )
     {
         return;
     }
@@ -749,18 +1011,23 @@ static void transmitJoinResponse( E_addrMode a_addrMode, uint8_t *a_dstAddr, boo
     {
         joinResponsePacket->m_panId = nwkAttribute.m_panId;
         joinResponsePacket->m_cmdType = JOIN_RESPONSE_ORDER;
-        joinResponsePacket->m_dstAddr.addrMode = a_addrMode;
-        if( a_addrMode == pointAddr16Bit )
+        joinResponsePacket->m_dstAddr.addrMode = a_dstAddr->addrMode;
+        if( a_dstAddr->addrMode == pointAddr16Bit )
         {
-            joinResponsePacket->m_dstAddr.addr.m_dstShortAddr = (uint16_t)(a_dstAddr[0] << 8 | a_dstAddr[1]);
+            joinResponsePacket->m_dstAddr.addr.m_dstShortAddr = (uint16_t)(a_dstAddr->addr.m_dstMacAddr[0] << 8 | a_dstAddr->addr.m_dstMacAddr[1]);
         }
-        else if( a_addrMode == pointAddr64Bit )
+        else if( a_dstAddr->addrMode == pointAddr64Bit )
         {
-            memcpy(joinResponsePacket->m_dstAddr.addr.m_dstMacAddr, a_dstAddr, MAC_ADDR_LEN);
+            memcpy(joinResponsePacket->m_dstAddr.addr.m_dstMacAddr, a_dstAddr->addr.m_dstMacAddr, MAC_ADDR_LEN);
         }
+#ifdef SELF_ORGANIZING_NETWORK
+        if( a_joinSuccess == true )
+        {
+            joinResponsePacket->m_shortAddr = increaseNewDevice( a_dstAddr->addr.m_dstMacAddr, a_lowPower );
+        }
+#endif
         joinResponsePacket->m_joinSuccess = a_joinSuccess;
         joinResponsePacket->m_srcAddr = nwkAttribute.m_shortAddr;
-        joinResponsePacket->m_shortAddr = getRand();
         transmitCommandNode->m_size = sizeof(t_joinResponsePacket);
         transmitCommandNode->m_packet = joinResponsePacket;
         transmitCommandNode->m_cmdType = JOIN_RESPONSE_ORDER;
@@ -786,10 +1053,26 @@ static void transmitJoinResponse( E_addrMode a_addrMode, uint8_t *a_dstAddr, boo
 *****************************************************************/
 static void packetAck( t_ackPacket *a_packet )
 {
-    if( a_packet->m_transmitID == transmitHead->m_transmitPacket.m_transmitID )
+    if( transmitHead && a_packet->m_transmitID == transmitHead->m_transmitPacket.m_transmitID )
     {
         stopTimer( TRANSMIT_WAIT_ACK_EVENT, SINGLE_TIMER );
         transmitFreeHeadData();
+    }
+    else
+    {
+        t_transmitQueue *retransmitNode = retransmitHead;
+        while( retransmitNode )
+        {
+            if( a_packet->m_transmitID == retransmitNode->m_transmitPacket.m_transmitID )
+            {
+                if( retransmitNode == retransmitCurrent )
+                {
+                    stopTimer( TRANSMIT_WAIT_ACK_EVENT, SINGLE_TIMER );
+                }
+                retransmitFreePacket(retransmitNode);
+            }
+            retransmitNode = retransmitNode->m_next;
+        }
     }
 }
 
@@ -828,11 +1111,11 @@ static void packetJoinRequest( t_joinRequestPacket *a_packet )
     dataDecode( a_packet->m_keyNum, a_packet->m_securityKey,  SECURITY_KEY_LEN);
     if( memcmp( a_packet->m_securityKey, securityKey, SECURITY_KEY_LEN ) == 0 )
     {
-        transmitJoinResponse( a_packet->m_srcAddr.addrMode, a_packet->m_srcAddr.addr.m_dstMacAddr, true );
+        transmitJoinResponse( &a_packet->m_srcAddr, true, a_packet->m_lowPower );
     }
     else
     {
-        transmitJoinResponse( a_packet->m_srcAddr.addrMode, a_packet->m_srcAddr.addr.m_dstMacAddr, false );
+        transmitJoinResponse( &a_packet->m_srcAddr, false, a_packet->m_lowPower );
     }
 }
 
@@ -848,6 +1131,10 @@ static void packetJoinRequest( t_joinRequestPacket *a_packet )
 *****************************************************************/
 static void packetJoinResponse( t_joinResponsePacket *a_packet )
 {
+    if( nwkAttribute.m_nwkStatus == true )
+    {
+        return;
+    }
     if( a_packet->m_joinSuccess == true )
     {
 #ifdef SELF_ORGANIZING_NETWORK
@@ -855,7 +1142,10 @@ static void packetJoinResponse( t_joinResponsePacket *a_packet )
 #endif
         nwkAttribute.m_nwkStatus = true;
         setNetworkStatus( NETWORK_DEVICE );
-        nwkAttributeSave();
+#if configUSE_TICKLESS_IDLE == 1
+        loraSetFrequency( LORA_FREQUENCY_MAX );
+#endif
+        eepSysNwkAttSave();
     }
     else
     {
